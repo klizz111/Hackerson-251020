@@ -1,4 +1,4 @@
-from .sm4 import (
+from .sm2 import (
     G,
     N,
     P,
@@ -7,4 +7,7 @@ from .sm4 import (
     privtopub,
     multiply,
     add,
+    inv,
+    PlainPoint2D,
+    PlainPoint3D,
 )

@@ -7,11 +7,8 @@ from typing import (
     cast,
 )
 
-if TYPE_CHECKING:
-    from py_ecc.typing import (
-        PlainPoint2D,
-        PlainPoint3D,
-    )
+PlainPoint2D = Tuple[int, int]
+PlainPoint3D = Tuple[int, int, int]
 
 
 def safe_ord(value: Any) -> int:

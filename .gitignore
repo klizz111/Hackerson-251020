@@ -1,5 +1,5 @@
 /packages
 /.vscode
-/test.py
+test.py
 *.txt
 **/__pycache__
