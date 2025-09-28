@@ -1,4 +1,4 @@
-/packages
+**/packages
 /.vscode
 test.py
 *.txt
