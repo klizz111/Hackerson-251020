@@ -6,6 +6,19 @@
     └── others
 ```
 
+# 注册登录
+
+## 注册
+
+用户生成用户名`username`和私钥`sk`，计算公钥`pk` = `sk` * G，计算证明`T = r*G`，`c = H(G || pk || T)`，`z = r + c*sk`，将`username, pk, T, z`发送给服务器。
+```json
+{
+    "username": "alice",
+    "pk": [x, y],
+    "T": [x1, y1],
+    "z": z
+}
+```
 # done
 
 1. ecc 基础构件

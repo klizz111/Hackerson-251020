@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Dict, Any
 from ..database.dataBase import DatabaseManager
-from ..zk.dlogProof import dlogProofVerify
+from ..zk.schnorr import dlogProofVerify
 
 class AuthService:
     """认证服务类，处理用户注册和登录逻辑"""
