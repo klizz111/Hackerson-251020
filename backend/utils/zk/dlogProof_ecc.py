@@ -38,7 +38,7 @@ def dlog_proof_verify_ecc(Y, proof):
     cY = multiply(Y, c)
 
     # 计算 cY 的逆
-    cY_neg = (cY[0],  -cY[1])
+    cY_neg = (cY[0], (-cY[1]) % P)
     
     # T = zG + (-cY)
     T = add(zG, cY_neg)
