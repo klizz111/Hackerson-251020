@@ -14,11 +14,43 @@
 ```json
 {
     "username": "alice",
-    "pk": [x, y],
+    "pk": [Y_x, Y_y],
     "T": [x1, y1],
     "z": z
 }
 ```
+
+返回
+
+```json
+{
+    "success":true/false,
+    "message":"...",
+    "session_id":"..."
+}
+```
+
+## 登录
+
+POST
+```json
+{
+    "username": "alice",
+    "T": [x1, y1],
+    "z": z
+}
+```
+
+RETURN
+
+```json
+{
+    "success":true/false,
+    "message":"...",
+    "session_id":"..."
+}
+```
+
 # done
 
 1. ecc 基础构件
