@@ -36,16 +36,24 @@ class DatabaseManager:
                 
                 # 账户数据，用于用户登录
                 self.create_table("account_data",
-                                  """id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                                  username TEXT NOT NULL UNIQUE, 
-                                  p TEXT NOT NULL, 
-                                  g TEXT NOT NULL,
-                                  q TEXT NOT NULL, 
-                                  y TEXT NOT NULL, 
-                                  compressed_credential TEXT NOT NULL,
-                                  bits INTEGER DEFAULT 256,
-                                  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"""
+                                """id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                                username TEXT NOT NULL UNIQUE, 
+                                p TEXT NOT NULL, 
+                                g TEXT NOT NULL,
+                                q TEXT NOT NULL, 
+                                y TEXT NOT NULL, 
+                                compressed_credential TEXT NOT NULL,
+                                bits INTEGER DEFAULT 256,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"""
                 )
+                
+                self.create_table("account_data_ecc",
+                                  """id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                  username TEXT NOT NULL UNIQUE,
+                                  pk_x TEXT NOT NULL,
+                                  pk_y TEXT NOT NULL
+                                  """
+                                  )
                 
                 # 会话管理
                 self.create_table("session_ID",

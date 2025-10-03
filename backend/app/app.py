@@ -66,6 +66,10 @@ def fhe_matching():
     """同态加密匹配系统页面"""
     return render_template('fhe_matching.html')
 
+@app.route('/auth_ecc')
+def auth_ecc():
+    return render_template('auth_ecc.html')
+
 # 初始化API路由
 def init_api_routes():
     """初始化所有API路由"""
