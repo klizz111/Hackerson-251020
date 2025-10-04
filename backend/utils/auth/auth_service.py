@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Dict, Any
 from ..database.dataBase import DatabaseManager
 from ..zk.schnorr import dlogProofVerify
+from ..zk.schnorr_ecc import dlog_proof_verify_ecc
 
 class AuthService:
     """认证服务类，处理用户注册和登录逻辑"""
@@ -148,3 +149,66 @@ class AuthService:
         except Exception as e:
             logging.error(f"Verify login proof error: {e}")
             return {'success': False, 'error': str(e)}
+        
+        
+    def register_ecc(self, username: str, pk_x: int, pk_y: int, c: int, z: int) -> Dict[str, Any]:
+        try:
+            # 检查用户名是否已存在
+            existing_user = self.db.select('account_data_ecc', 'username = ?', (username,))
+            if existing_user:
+                return {'success': False, 'error': 'Username already exists'}   
+            
+            # 验证zkp
+            Y = (pk_x, pk_y)
+            proof = (c, z)
+            is_valid = dlog_proof_verify_ecc(Y, proof)
+            
+            if not is_valid:
+                return {'success': False, 'error': 'Invalid proof'}
+            
+            # 创建用户记录
+            account_data = {
+                'username': username,
+                'pk_x': str(pk_x),
+                'pk_y': str(pk_y),
+            }
+            
+            self.db.insert('account_data', account_data)
+            
+            return {
+                'success': True,
+                'message': 'Registration completed successfully'
+            }
+        except Exception as e:
+            logging.error(f"ECC Register error: {e}")
+            return {'success': False, 'error': str(e)}
+            
+    def verify_login_proof_ecc(self, username: str, proof_c: int, proof_z: int) -> Dict[str, Any]:
+        try:
+            # 获取用户信息
+            user_record = self.db.select('account_data_ecc', 'username = ?', (username,))
+            if not user_record:
+                return {'success': False, 'error': 'User not found'}
+            
+            user_data = user_record[0]
+            Y_x = int(user_data['pk_x'])
+            Y_y = int(user_data['pk_y'])
+            Y = (Y_x, Y_y)
+            proof = (proof_c,proof_z)
+            
+            is_valid = dlog_proof_verify_ecc(Y, proof)
+                
+            if is_valid:
+                # 登录成功，生成session ID
+                session_id = self.db.generate_session_id(username)
+                
+                return {
+                    'success': True,
+                    'message': 'Login successful',
+                    'session_id': session_id,
+                    'username': username
+                }
+            
+        except Exception as e:
+            logging.error(f"{e}")
+            return {'sucess': False, 'errot': str(e)}

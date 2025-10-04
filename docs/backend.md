@@ -10,12 +10,13 @@
 
 ## 注册
 
-用户生成用户名`username`和私钥`sk`，计算公钥`pk` = `sk` * G，计算证明`T = r*G`，`c = H(G || pk || T)`，`z = r + c*sk`，将`username, pk, T, z`发送给服务器。
+用户生成用户名`username`和私钥`sk`，计算公钥`pk` = `sk` * G，计算证明`T = r*G`，`c = H(G || pk || T)`，`z = r + c*sk`，将`username, pk, T, z`发送给服务器。`/api/register`
 ```json
 {
     "username": "alice",
-    "pk": [Y_x, Y_y],
-    "T": [x1, y1],
+    "pk_x": Y_x,
+    "pk_y": Y_y,
+    "c": c,
     "z": z
 }
 ```

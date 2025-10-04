@@ -2,6 +2,7 @@ from flask import request, jsonify, g
 from functools import wraps
 from ..auth import AuthService, SessionManager
 from ..database.dataBase import DatabaseManager
+from ..zk.schnorr import dlogProofVerify
 
 class AuthRoutes:
     """认证相关的路由处理类"""
@@ -181,3 +182,12 @@ class AuthRoutes:
                 })
             else:
                 return jsonify({'valid': False})
+            
+        @self.app.route('/api/register_ecc', methods=['POST'])
+        def register_ecc(self):
+            """ECC注册"""
+            data = request.get_json()
+            username = data.get('username')
+            
+            if not username:
+                return jsonify({'error': 'Username is required'}), 400
