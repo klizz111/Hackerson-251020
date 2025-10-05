@@ -2,6 +2,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import SecureElGamal from '../utils/secureElgamal.js'
 import { DASHBOARD_URL } from '../config.js'
+import sm2 from '../utils/sm2.js'
 
 const secureElgamal = new SecureElGamal(256)
 
