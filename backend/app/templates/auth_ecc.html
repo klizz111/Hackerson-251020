@@ -13,7 +13,7 @@
             <h1>🔐 login</h1>
             <p>
             🛡️ 私钥永不离开本地设备<br>
-            🔑 使用512位私钥&emsp;&emsp;&emsp;</p>
+            🔑 使用256位私钥&emsp;&emsp;&emsp;</p>
         </div>
         
         <div class="right-panel">
@@ -84,7 +84,7 @@
         
         // 生成随机种子
         function generateSeed() {
-            const seed = sm2.genPrivateKey();
+            const seed = sm2.generateReadableSeed();
             document.getElementById('regSeed').value = seed;
 
             // 复制到剪贴板
@@ -129,8 +129,11 @@
             resultDiv.innerHTML = '<div class="loading">正在注册账户，请稍等...</div>';
             
             try {
-                const result = await secureElgamal.register(username, seed);
-                
+                const result = await sm2.register(username, seed);
+                if (!result.success) {
+                    throw new Error(result.message || '注册失败');
+                }
+
                 resultDiv.innerHTML = `
                     <div class="success">✅ 注册成功！</div>
                     <div class="info">
@@ -304,7 +307,7 @@
             }
         }
         
-        // 显示用户控制面板
+        // 登录
         async function login() {
             const username = document.getElementById('loginUsername').value.trim();
             const seed = document.getElementById('loginSeed').value.trim();
@@ -318,7 +321,7 @@
             resultDiv.innerHTML = '<div class="loading">正在登录...</div>';
             
             try {
-                const result = await secureElgamal.zkLogin(username, seed);
+                const result = await sm2.login(username, seed);
                 
                 // 登录成功后跳转到匹配系统主页面
                 resultDiv.innerHTML = '<div class="success">✅ 登录成功！正在跳转到匹配系统...</div>';

@@ -156,15 +156,15 @@ class AuthService:
             # 检查用户名是否已存在
             existing_user = self.db.select('account_data_ecc', 'username = ?', (username,))
             if existing_user:
-                return {'success': False, 'error': 'Username already exists'}   
+                return {'success': False, 'message': 'Username already exists'}   
             
             # 验证zkp
             Y = (pk_x, pk_y)
             proof = (c, z)
             is_valid = dlog_proof_verify_ecc(Y, proof)
-            
+
             if not is_valid:
-                return {'success': False, 'error': 'Invalid proof'}
+                return {'success': False, 'message': 'Invalid proof'}
             
             # 创建用户记录
             account_data = {
@@ -173,7 +173,7 @@ class AuthService:
                 'pk_y': str(pk_y),
             }
             
-            self.db.insert('account_data', account_data)
+            self.db.insert('account_data_ecc', account_data)
             
             return {
                 'success': True,
@@ -181,7 +181,7 @@ class AuthService:
             }
         except Exception as e:
             logging.error(f"ECC Register error: {e}")
-            return {'success': False, 'error': str(e)}
+            return {'success': False, 'message': str(e)}
             
     def verify_login_proof_ecc(self, username: str, proof_c: int, proof_z: int) -> Dict[str, Any]:
         try:
@@ -211,4 +211,4 @@ class AuthService:
             
         except Exception as e:
             logging.error(f"{e}")
-            return {'sucess': False, 'errot': str(e)}
+            return {'sucess': False, 'message': str(e)}

@@ -37,7 +37,7 @@ POST
 ```json
 {
     "username": "alice",
-    "T": [x1, y1],
+    "c":c,
     "z": z
 }
 ```

@@ -2,6 +2,9 @@ from ..ecc.sm2 import *
 import random
 from Crypto.Hash import SHA256
 
+def _int_to_32bytes(x: int) -> bytes:
+    return int(x).to_bytes(32, 'big')
+
 def dlog_proof_ecc(x: int):
     """
     x: private key (integer)
@@ -15,9 +18,12 @@ def dlog_proof_ecc(x: int):
     # Step 3: Compute T = r*G
     T = multiply(G, r)
     
-    # Step 4: Compute c = H(G, Y, T)
-    hash_input = str(int(G[0])) + str(int(G[1])) + str(int(Y[0])) + str(int(Y[1])) + str(int(T[0])) + str(int(T[1]))
-    c = int(SHA256.new(hash_input.encode()).hexdigest(), 16) % (N-1)
+    hash_input = b"".join([
+        _int_to_32bytes(int(G[0])), _int_to_32bytes(int(G[1])),
+        _int_to_32bytes(int(Y[0])), _int_to_32bytes(int(Y[1])),
+        _int_to_32bytes(int(T[0])), _int_to_32bytes(int(T[1]))
+    ])
+    c = int.from_bytes(SHA256.new(data=hash_input).digest(), 'big') % N
     
     # Step 5: Compute z = r + c*x (mod N-1)
     z = (r + c*x) % N
@@ -32,7 +38,7 @@ def dlog_proof_verify_ecc(Y, proof):
     """
     # Step 1: Unpack the proof
     c, z = proof
-    
+
     # Step 2: Compute T = z*G - c*Y
     zG = multiply(G, z)
     cY = multiply(Y, c)
@@ -42,10 +48,13 @@ def dlog_proof_verify_ecc(Y, proof):
     
     # T = zG + (-cY)
     T = add(zG, cY_neg)
-    
-    # Step 3: Recompute challenge c' = H(G, Y, T)
-    hash_input = str(int(G[0])) + str(int(G[1])) + str(int(Y[0])) + str(int(Y[1])) + str(int(T[0])) + str(int(T[1]))
-    c_computed = int(SHA256.new(hash_input.encode()).hexdigest(), 16) % (N-1)
+
+    hash_input = b"".join([
+        _int_to_32bytes(int(G[0])), _int_to_32bytes(int(G[1])),
+        _int_to_32bytes(int(Y[0])), _int_to_32bytes(int(Y[1])),
+        _int_to_32bytes(int(T[0])), _int_to_32bytes(int(T[1]))
+    ])
+    c_computed = int.from_bytes(SHA256.new(data=hash_input).digest(), 'big') % N
         
     # Step 4: Return True if c == c_computed, else False
     return c == c_computed

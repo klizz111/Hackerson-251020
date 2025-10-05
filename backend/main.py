@@ -28,7 +28,7 @@ def main():
         app.run(
             host='0.0.0.0',  # 允许外部访问
             port=5000,       # 端口号
-            debug=False       # 开发模式
+            debug=True       # 开发模式
         )
         
     except KeyboardInterrupt:

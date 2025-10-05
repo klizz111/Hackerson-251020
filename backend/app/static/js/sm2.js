@@ -1,4 +1,3 @@
-
 // 基础 SM2/椭圆曲线（大整数使用 BigInt）数学运算移植自 sm2.py（不包含 ECDSA 签名/恢复）
 
 const P = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF');
@@ -9,7 +8,6 @@ const Gx = BigInt('0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334
 const Gy = BigInt('0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0');
 const G = [Gx, Gy];
 
-// 规范化模运算，返回 0..mod-1
 function mod(x, m = P) {
     const r = x % m;
     return r >= 0n ? r : r + m;
@@ -153,6 +151,157 @@ function bigIntToBytes(num, length) {
     return bytes;
 }
 
+
+function generateSeed() {
+    // 生成32字节随机数据，转换为Base64格式（更短但仍然安全）
+    const array = new Uint8Array(32);  // 32字节 = 256位
+    crypto.getRandomValues(array);
+    // 使用Base64编码，去掉填充字符，更紧凑
+    return btoa(String.fromCharCode(...array)).replace(/[+/=]/g, '').substring(0, 32);
+}
+
+function generateReadableSeed() {
+    const seed = this.generateSeed();
+    // 每8个字符添加一个分隔符
+    return seed.match(/.{1,8}/g).join('-');
+}
+
+// 使用种子派生256位私钥
+async function derivePrivateKey(seed) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(seed);
+    
+    let hashBuffer = await crypto.subtle.digest('SHA-256', data);  
+    
+    const hashArray = new Uint8Array(hashBuffer);
+    
+    // 将哈希转换为大整数
+    let x = 0n;
+    for (let i = 0; i < hashArray.length; i++) {
+        x = (x << 8n) + BigInt(hashArray[i]);
+    }
+    
+    // 确保私钥在正确范围内 [1, P]
+    return (x % (P - 1n)) + 1n;
+}
+
+async function register(username, seed) {
+    // 1. 生成用户私钥
+    const d = await derivePrivateKey(seed);
+
+    // 2. 计算用户公钥
+    const P = multiply(G, d);
+
+    // 3. 生成随机数 r
+    const r = genPrivateKey();
+
+    // 4. T = r * G
+    const T = multiply(G, r);
+
+    // 使用 32 字节大端序列化每个坐标并拼接，然后做 SHA-256
+    const parts = [Gx, Gy, P[0], P[1], T[0], T[1]];
+    const data = new Uint8Array(32 * parts.length);
+    for (let i = 0; i < parts.length; i++) {
+        data.set(bigIntToBytes(parts[i], 32), i * 32);
+    }
+
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = new Uint8Array(hashBuffer);
+    let c = 0n;
+    for (let i = 0; i < hashArray.length; i++) {
+        c = (c << 8n) + BigInt(hashArray[i]);
+    }
+
+    c = c % N; // 使用 N
+
+    // 6. 计算 z = (r + c * d) mod N
+    const z = mod(r + c * d, N);
+
+    const postdata = {
+        username: username,
+        pk_x: P[0].toString(),
+        pk_y: P[1].toString(),
+        c: c.toString(),
+        z: z.toString(),
+    }
+
+    const response = await fetch('/api/register_ecc', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postdata),
+    });
+
+    return await response.json();
+}
+
+async function login(username, seed) {
+    // 1. 生成用户私钥
+    const d = await derivePrivateKey(seed);
+    // 2. 计算用户公钥
+    const P = multiply(G, d);
+    // 3. 生成随机数 r
+    const r = genPrivateKey();
+    // 4. T = r * G
+    const T = multiply(G, r);
+    // 使用 32 字节大端序列化每个坐标并拼接，然后做 SHA-256
+    const parts = [Gx, Gy, P[0], P[1], T[0], T[1]];
+    const data = new Uint8Array(32 * parts.length);
+    for (let i = 0; i < parts.length; i++) {
+        data.set(bigIntToBytes(parts[i], 32), i * 32);
+    }
+
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = new Uint8Array(hashBuffer);
+    let c = 0n;
+    for (let i = 0; i < hashArray.length; i++) {
+        c = (c << 8n) + BigInt(hashArray[i]);
+    }
+
+    const z = mod(r + c * d, N);
+
+    const postdata = {
+        username: username,
+        c: c.toString(),
+        z: z.toString(),
+    }
+
+    const response = await fetch('/api/login_ecc', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(postdata),
+    }); 
+
+    const result = await response.json();
+
+    if (result.success) {
+        saveSessionToLocal(username, result.session_id);
+        return result;
+    } else {
+        return result;
+    }
+}
+
+
+
+function  saveSessionToLocal(username, sessionId) {
+        try {
+            const sessionData = {
+                username: username,
+                sessionId: sessionId,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(`zk_session_${username}`, JSON.stringify(sessionData));
+            localStorage.setItem('zk_current_session', sessionId);
+            localStorage.setItem('zk_current_user', username);
+        } catch (error) {
+            console.warn('无法保存session到本地存储:', error);
+        }
+    }
+
 // 导出到全局对象
 window.sm2 = {
     P, N, A, B, Gx, Gy, G,
@@ -167,5 +316,11 @@ window.sm2 = {
     multiply,
     add,
     genPrivateKey,
+    bigIntToBytes,
+    generateSeed,
+    generateReadableSeed,
+    derivePrivateKey,
+    register,
+    login,
 };
 

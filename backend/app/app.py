@@ -51,7 +51,7 @@ def close_db_on_teardown(error):
     close_db(error)
 
 # 页面路由
-@app.route('/')
+@app.route('/auth')
 def index():
     """登录页面"""
     return render_template('auth.html')
@@ -66,7 +66,7 @@ def fhe_matching():
     """同态加密匹配系统页面"""
     return render_template('fhe_matching.html')
 
-@app.route('/auth_ecc')
+@app.route('/')
 def auth_ecc():
     return render_template('auth_ecc.html')
 
