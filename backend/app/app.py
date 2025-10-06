@@ -59,7 +59,7 @@ def index():
 @app.route('/dashboard')
 def dashboard():
     """匹配系统主页面"""
-    return render_template('index.html')
+    return render_template('index_ecc.html')
 
 @app.route('/fhe_matching')
 def fhe_matching():

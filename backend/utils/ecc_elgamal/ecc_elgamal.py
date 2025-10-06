@@ -14,8 +14,8 @@ def GenPubKey(d: int) -> PlainPoint2D:
 
 def enc(pk: PlainPoint2D, m: PlainPoint2D) -> Tuple[PlainPoint2D, PlainPoint2D]:
     """加密 c = (C1, C2)
-        C1 = k*G
-        C2 = m + k*pk
+        C1 = r*G
+        C2 = m + r*pk = m + r*d*G
     """
     k = random.randint(1, N-2)
     C1 = multiply(G, k)

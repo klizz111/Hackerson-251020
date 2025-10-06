@@ -1,4 +1,4 @@
-// 基础 SM2/椭圆曲线（大整数使用 BigInt）数学运算移植自 sm2.py（不包含 ECDSA 签名/恢复）
+// 椭圆曲线参数
 
 const P = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF');
 const N = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123');
@@ -7,6 +7,12 @@ const B = BigInt('0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D94
 const Gx = BigInt('0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7');
 const Gy = BigInt('0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0');
 const G = [Gx, Gy];
+const O = [0n, 0n]; 
+const INFINITY = [0n, 1n, 0n];
+
+function isInfinityAffine(p) {
+    return Array.isArray(p) && p.length === 2 && p[0] === 0n && p[1] === 0n;
+}
 
 function mod(x, m = P) {
     const r = x % m;
@@ -40,27 +46,28 @@ function inv(a, n) {
 
 // 将二维点转为雅可比坐标 [x,y,z]
 function toJacobian(p) {
+    if (!p) return INFINITY.slice();
+    if (Array.isArray(p) && p.length === 3) {
+        return p[2] === 0n ? INFINITY.slice() : p.slice();
+    }
+    if (isInfinityAffine(p)) return INFINITY.slice();
     return [p[0], p[1], 1n];
 }
 
 // 从雅可比坐标转回二维点
 function fromJacobian(p) {
-    // 如果 z==0 表示无穷点，返回 (0,0)
-    if (p[2] === 0n) return [0n, 0n];
+    if (!p || p[2] === 0n) return O.slice();
     const zInv = inv(p[2], P);
     const zInv2 = mod(zInv * zInv, P);
     const zInv3 = mod(zInv2 * zInv, P);
-    const x = mod(p[0] * zInv2, P);
-    const y = mod(p[1] * zInv3, P);
-    return [x, y];
+    return [mod(p[0] * zInv2, P), mod(p[1] * zInv3, P)];
 }
 
 // 雅可比点加倍
 function jacobianDouble(p) {
     const [X1, Y1, Z1] = p;
-    if (Y1 === 0n || Z1 === 0n && Y1 === 0n) {
-        return [0n, 0n, 0n];
-    }
+    if (Z1 === 0n || Y1 === 0n) 
+        return INFINITY.slice();
     const Y1sq = mod(Y1 * Y1, P);
     const S = mod(4n * X1 * Y1sq, P);
     const M = mod(3n * X1 * X1 + A * (Z1 ** 4n), P);
@@ -72,11 +79,12 @@ function jacobianDouble(p) {
 
 // 雅可比点相加
 function jacobianAdd(p, q) {
+    if (p[2] === 0n) return q.slice();
+    if (q[2] === 0n) return p.slice();
     const [X1, Y1, Z1] = p;
     const [X2, Y2, Z2] = q;
-    // 处理无穷点
-    if (Y1 === 0n) return q;
-    if (Y2 === 0n) return p;
+    if (Y1 === 0n) return q.slice();
+    if (Y2 === 0n) return p.slice();
 
     const U1 = mod(X1 * (Z2 ** 2n), P);
     const U2 = mod(X2 * (Z1 ** 2n), P);
@@ -105,11 +113,9 @@ function jacobianAdd(p, q) {
 
 // 雅可比点按整数乘（使用平方-加算法）
 function jacobianMultiply(a, n) {
-    let e = BigInt(n);
-    if (e === 0n || a[1] === 0n) return [0n, 0n, 1n];
-    e = e % N;
-    if (e < 0n) e += N;
-    let result = [0n, 0n, 1n];
+    let e = mod(BigInt(n), N);
+    if (a[1] === 0n || e === 0n) return INFINITY.slice();
+    let result = INFINITY.slice();
     let addend = a.slice();
     while (e > 0n) {
         if (e & 1n) result = jacobianAdd(result, addend);
@@ -285,8 +291,6 @@ async function login(username, seed) {
     }
 }
 
-
-
 function  saveSessionToLocal(username, sessionId) {
         try {
             const sessionData = {
@@ -302,6 +306,123 @@ function  saveSessionToLocal(username, sessionId) {
         }
     }
 
+
+async function GenPK(username) {
+    const seed = localStorage.getItem(`${username}_seed`);
+    if (!seed) {
+        throw new Error('用户种子不存在');
+    }
+    return derivePrivateKey(seed).then(d => multiply(G, d));
+}
+
+async function enc(pk, m) {
+    // 1. 生成随机数 k
+    const k = genPrivateKey();
+
+    // 2. 计算 C1 = k * G
+    const C1 = multiply(G, k);
+
+    // 3. 计算 S = k * pk
+    const S = multiply(pk, k);
+
+    // 4. 计算 C2 = m + S
+    const C2 = add(m, S);
+
+    return { C1, C2 };
+}
+
+async function dec(d, C1, C2) {
+    const S = multiply(C1, d);
+    return add(C2, negate(S));
+}
+
+function negate(p) {
+    if (!p || (p[0] === 0n && p[1] === 0n)) return O.slice();
+    return [p[0], mod(-p[1], P)];
+}
+
+// 生成共享密钥
+async function gen_shared_key(currentUser, other_username) {
+    const seed = localStorage.getItem(`zk_login_seed_${currentUser}`);
+    if (!seed) {
+        throw new Error('用户种子不存在');
+    }
+
+    const user_x = localStorage.getItem(`${other_username}_x`);
+    const user_y = localStorage.getItem(`${other_username}_y`);
+
+    const d = await derivePrivateKey(seed);
+    // 计算共享密钥
+    // 计算 S = d * pk_other
+    const other_pk = [BigInt(user_x), BigInt(user_y)];
+    const S = multiply(other_pk, d);
+
+    // 共享私钥为S的x坐标
+    return S[0].toString();
+}
+
+// 加密联系方式与选择
+async function prepare_response_info(contact_info,currentUser, other_username, response) {
+    // 1. 生成联系方式加密密钥m
+    const contact_key_int = genPrivateKey() 
+    localStorage.setItem(`contact_key_${currentUser}_to_${other_username}`, contact_key_int.toString());
+    
+    // 2. 生成点M
+    const M = multiply(G, contact_key_int);
+    const symmetric_key = M[0]
+    console.log('M:', M);
+
+    // 3. AES加密
+    const encryptedHex = aes_enc_ecb(contact_info, symmetric_key);
+    
+    // 转换为Uint8Array
+    encrypted_contact = new Uint8Array(
+        encryptedHex.match(/.{2}/g).map(byte => parseInt(byte, 16))
+    );
+    
+    // 3. 加密contact_key_int
+    const gen_shared_key = localStorage.getItem(`${currentUser}_${other_username}_shared_key`);
+    if (!gen_shared_key) {
+        throw new Error('共享密钥不存在');
+    }
+
+    const pk = multiply(G, BigInt(gen_shared_key));
+    const encrypt_message_temp = await enc(pk, M);
+
+    // 4. 加密选择
+    const choice = response === 'accept' ? 1n : 0n; 
+
+    let choice_point;
+    if (choice === 1n) {
+        choice_point = O; // 如果同意加密无穷点
+    } else {
+        choice_point = multiply(G, genPrivateKey()); // 如果拒绝加密随机点
+    }
+    const encrypt_choice = await enc(pk, choice_point);
+    
+    // 5. 点加
+    const C1_final = add(encrypt_message_temp.C1,encrypt_choice.C1); 
+    const C2_final = add(encrypt_message_temp.C2, encrypt_choice.C2);
+
+    response_data = {
+        C1_x: C1_final[0].toString(),
+        C1_y: C1_final[1].toString(),
+        C2_x: C2_final[0].toString(),
+        C2_y: C2_final[1].toString(),
+        encrypted_contact: Array.from(encrypted_contact).map(b => b.toString(16).padStart(2, '0')).join('')
+    }
+
+    // 尝试解密
+    var dec_res = await dec(BigInt(gen_shared_key), C1_final, C2_final);
+    console.log('尝试解密结果:', dec_res);
+    if (dec_res[0] === M[0])
+        console.log('解密成功，点匹配');
+    else
+        console.log('解密失败，点不匹配');
+
+    return response_data;
+}
+
 // 导出到全局对象
 window.sm2 = {
     P, N, A, B, Gx, Gy, G,
@@ -315,6 +436,7 @@ window.sm2 = {
     jacobianMultiply,
     multiply,
     add,
+    negate,
     genPrivateKey,
     bigIntToBytes,
     generateSeed,
@@ -322,5 +444,10 @@ window.sm2 = {
     derivePrivateKey,
     register,
     login,
+    enc,
+    dec,
+    gen_shared_key,
+    prepare_response_info,
+    GenPK,
 };
 

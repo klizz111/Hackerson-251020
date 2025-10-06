@@ -665,11 +665,12 @@ class DatabaseManager:
                 # 获取推送对象的详细信息
                 user_info = self.select('user_data', 'username = ?', (push['to_user'],))
                 
-                # 获取对象的公钥y
-                user_account = self.select('account_data', 'username = ?', (push['to_user'],))
+                # 获取对象的公钥pk_x, pk_y
+                user_account = self.select('account_data_ecc', 'username = ?', (push['to_user'],))
                 user_y = None
                 if user_account and len(user_account) > 0:
-                    user_y = user_account[0]['y']
+                    user_x = user_account[0]['pk_x']
+                    user_y = user_account[0]['pk_y']
                     
                 if user_info:
                     user_data = dict(user_info[0])
@@ -682,6 +683,7 @@ class DatabaseManager:
                         'education': user_data['education'],
                         'hobbies': user_data['hobbies'],
                         'bio': user_data['bio'],
+                        'user_x': user_x,
                         'user_y': user_y 
                     }
                     result.append({

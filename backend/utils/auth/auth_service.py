@@ -175,6 +175,19 @@ class AuthService:
             
             self.db.insert('account_data_ecc', account_data)
             
+            # 在用户表中创建记录
+            user_data = {
+                'username': username,
+                'nickname': username,  # 默认昵称为用户名
+                'age': None,
+            }
+            
+            try:
+                self.db.insert('user_data', user_data)
+                print("User data inserted successfully")
+            except:
+                pass  # 如果已存在则忽略
+            
             return {
                 'success': True,
                 'message': 'Registration completed successfully'

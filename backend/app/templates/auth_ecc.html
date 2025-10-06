@@ -323,6 +323,9 @@
             try {
                 const result = await sm2.login(username, seed);
                 
+                if (!result.success) {
+                    throw new Error(result.error || '登录失败');
+                }
                 // 登录成功后跳转到匹配系统主页面
                 resultDiv.innerHTML = '<div class="success">✅ 登录成功！正在跳转到匹配系统...</div>';
                 
