@@ -880,7 +880,8 @@
                 localStorage.setItem(`${currentUser}_${username}_shared_key`, sharedKey);
 
                 // 加密联系方式与选择
-                contact_info = localStorage.getItem(`contact_info_${currentUser}`);
+                let contact_info = localStorage.getItem(`contact_info_${currentUser}`);
+                contact_info = "sucess_" + contact_info;// 标记
                 
                 let prepared;
                 try {
