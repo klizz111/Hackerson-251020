@@ -5,8 +5,10 @@ import datetime
 import logging
 from ..fhe.fhe import *
 import random
-from ..useful.gen_rand_message import generate_random_message_string
-import json
+from ..useful.gen_rand_message import generate_random_message_string,generate_random_hex_string
+from ..ecc_elgamal import *
+from ..ecc.sm2 import *
+import json 
 
 class MatchingRoutes:
     """匹配系统相关的路由处理类"""
@@ -124,7 +126,7 @@ class MatchingRoutes:
                 return jsonify(result), status_code
         
  
-        @self.app.route('/api/respond_push', methods=['POST'])
+        @self.app.route('/api/respond_push_ecc', methods=['POST'])
         @self.require_session
         def respond_to_push():
             """响应推送（接受/拒绝）"""
@@ -132,11 +134,15 @@ class MatchingRoutes:
             data = request.get_json()
             
             push_id = data.get('push_id')
-            encrypted_response_c1 = data.get('encrypted_response_c1')
-            encrypted_response_c2 = data.get('encrypted_response_c2')
-            encrypted_contact_info = data.get('encrypted_contact_info')
-            encrypted_key_c1 = data.get('encrypted_key_c1')
-            encrypted_key_c2 = data.get('encrypted_key_c2')
+            encrypt_message_C1_x = data.get('encrypt_message_C1_x')
+            encrypt_message_C1_y = data.get('encrypt_message_C1_y')
+            encrypt_message_C2_x = data.get('encrypt_message_C2_x')
+            encrypt_message_C2_y = data.get('encrypt_message_C2_y')
+            encrypt_choice_C1_x = data.get('encrypt_choice_C1_x')
+            encrypt_choice_C1_y = data.get('encrypt_choice_C1_y')
+            encrypt_choice_C2_x = data.get('encrypt_choice_C2_x')
+            encrypt_choice_C2_y = data.get('encrypt_choice_C2_y')
+            encrypted_contact = data.get('encrypted_contact')
             
             if not push_id:
                 return jsonify({'error': 'Invalid push_id'}), 400
@@ -160,154 +166,30 @@ class MatchingRoutes:
                 push = push_records[0]
                 to_user = push['to_user']
                 
-                # 获取系统公钥（root用户的公钥参数）
-                root_account = db.select('account_data', 'username = ?', ('root',))
-                if not root_account:
-                    return jsonify({'error': '系统配置错误'}), 500
-                
-                bond_pub_key = {
-                    'p': root_account[0]['p'],
-                    'g': root_account[0]['g'],
-                    'q': root_account[0]['q'],
-                    'y': root_account[0]['y']
-                }
-                
-                # 使用组合键查找现有的FHE记录
+                # 创建fhe_records记录
                 existing_fhe = db.execute_custom_sql(
-                    "SELECT * FROM fhe_records WHERE (username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
-                    (username, to_user, to_user, username)
+                    "SELECT * FROM fhe_records WHERE id = ? AND from_user = ?",
+                    (push_id, username)
                 )
                 
                 if existing_fhe:
-                    # 更新现有记录
-                    fhe_record = existing_fhe[0]
-                    
-                    # 确定当前用户是username1还是username2
-                    if fhe_record['username1'] == username:
-                        # 当前用户是username1，更新用户1的数据
-                        update_data = {
-                            'visited_1': 1,
-                            'encrypted_contact_info_1': str(encrypted_contact_info) if encrypted_contact_info else None,
-                            'encrypted_enc_key_1_c1': encrypted_key_c1,
-                            'encrypted_enc_key_1_c2': encrypted_key_c2,
-                            'encrypted_choice_1_c1': encrypted_response_c1,
-                            'encrypted_choice_1_c2': encrypted_response_c2,
-                            'updated_at': datetime.datetime.now().isoformat()
-                        }
-                    else:
-                        # 当前用户是username2，更新用户2的数据
-                        update_data = {
-                            'visited_2': 1,
-                            'encrypted_contact_info_2': str(encrypted_contact_info) if encrypted_contact_info else None,
-                            'encrypted_enc_key_2_c1': encrypted_key_c1,
-                            'encrypted_enc_key_2_c2': encrypted_key_c2,
-                            'encrypted_choice_2_c1': encrypted_response_c1,
-                            'encrypted_choice_2_c2': encrypted_response_c2,
-                            'updated_at': datetime.datetime.now().isoformat()
-                        }
-                    
-                    db.update('fhe_records', update_data, 'id = ?', (fhe_record['id'],))
-                    
-                else:
-                    # 创建新的fhe_records记录
-                    # 确定用户顺序（按字母顺序排序以保持一致性）
-                    users = sorted([username, to_user])
-                    username1, username2 = users[0], users[1]
-                    
-                    fhe_data = {
-                        'match_id': push_id,
-                        'username1': username1,
-                        'username2': username2,
-                        'bond_pub_key': str(bond_pub_key),
-                        'created_at': datetime.datetime.now().isoformat(),
-                        'updated_at': datetime.datetime.now().isoformat()
-                    }
-                    
-                    # 根据当前用户设置对应的字段
-                    if username == username1:
-                        fhe_data.update({
-                            'visited_1': 1,
-                            'encrypted_contact_info_1': str(encrypted_contact_info) if encrypted_contact_info else None,
-                            'encrypted_enc_key_1_c1': encrypted_key_c1,
-                            'encrypted_enc_key_1_c2': encrypted_key_c2,
-                            'encrypted_choice_1_c1': encrypted_response_c1,
-                            'encrypted_choice_1_c2': encrypted_response_c2,
-                            'visited_2': 0
-                        })
-                    else:
-                        fhe_data.update({
-                            'visited_2': 1,
-                            'encrypted_contact_info_2': str(encrypted_contact_info) if encrypted_contact_info else None,
-                            'encrypted_enc_key_2_c1': encrypted_key_c1,
-                            'encrypted_enc_key_2_c2': encrypted_key_c2,
-                            'encrypted_choice_2_c1': encrypted_response_c1,
-                            'encrypted_choice_2_c2': encrypted_response_c2,
-                            'visited_1': 0
-                        })
-                    
-                    db.insert('fhe_records', fhe_data)
+                    return jsonify({'error': 'FHE记录已存在'}), 400
                 
-                # 检查双方是否都已经响应
-                updated_fhe = db.execute_custom_sql(
-                    "SELECT * FROM fhe_records WHERE (username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
-                    (username, to_user, to_user, username)
-                )
+                db.insert('fhe_records', {
+                    'match_id': push_id,
+                    'from_user': username,
+                    'to_user': to_user,
+                    'encrypt_message_C1_x': encrypt_message_C1_x,
+                    'encrypt_message_C1_y': encrypt_message_C1_y,
+                    'ecrypt_message_C2_x': encrypt_message_C2_x,
+                    'encrypt_message_C2_y': encrypt_message_C2_y,
+                    'encrypt_choice_C1_x': encrypt_choice_C1_x,
+                    'encrypt_choice_C1_y': encrypt_choice_C1_y,
+                    'encrypt_choice_C2_x': encrypt_choice_C2_x,
+                    'encrypt_choice_C2_y': encrypt_choice_C2_y,
+                    'encrypted_contact': encrypted_contact
+                })
                 
-                if updated_fhe and updated_fhe[0]['visited_1'] == 1 and updated_fhe[0]['visited_2'] == 1:
-                    # 双方都已响应，可以进行匹配计算    
-                    system = SecureMatchingSystem()
-                    system.setup_system(
-                        int(bond_pub_key['p']),
-                        int(bond_pub_key['g']),
-                        int(bond_pub_key['q'])
-                    )
-                    
-                    fhe_record = updated_fhe[0]
-                    
-                    # 获取双方的加密数据
-                    user1_choice_cipher = (
-                        int(fhe_record['encrypted_choice_1_c1']), 
-                        int(fhe_record['encrypted_choice_1_c2'])
-                    )
-                    user1_contact_key_cipher = (
-                        int(fhe_record['encrypted_enc_key_1_c1']), 
-                        int(fhe_record['encrypted_enc_key_1_c2'])
-                    )
-                    
-                    user2_choice_cipher = (
-                        int(fhe_record['encrypted_choice_2_c1']), 
-                        int(fhe_record['encrypted_choice_2_c2'])
-                    )
-                    user2_contact_key_cipher = (
-                        int(fhe_record['encrypted_enc_key_2_c1']), 
-                        int(fhe_record['encrypted_enc_key_2_c2'])
-                    )
-                    
-                    # 同态运算
-                    platform = Platform(system)
-                    
-                    # 准备用户数据
-                    user1_data = (user1_choice_cipher, user1_contact_key_cipher)
-                    user2_data = (user2_choice_cipher, user2_contact_key_cipher)
-                    
-                    # 执行安全匹配计算
-                    final_result_cipher, contact2_key_for_user1, contact1_key_for_user2 = platform.process_secure_matching_v2(
-                        user1_data, user2_data
-                    )
-                    
-                    # 保存FHE计算结果
-                    fhe_update = {
-                        'fhe_caculated_choice_c1': str(final_result_cipher[0]),
-                        'fhe_caculated_choice_c2': str(final_result_cipher[1]),
-                        'fhe_caculated_enc_key_1_c1': str(contact1_key_for_user2[0]),
-                        'fhe_caculated_enc_key_1_c2': str(contact1_key_for_user2[1]),
-                        'fhe_caculated_enc_key_2_c1': str(contact2_key_for_user1[0]),
-                        'fhe_caculated_enc_key_2_c2': str(contact2_key_for_user1[1]),
-                        'updated_at': datetime.datetime.now().isoformat()
-                    }
-                    
-                    db.update('fhe_records', fhe_update, 'id = ?', (fhe_record['id'],))
-                    
                 return jsonify({
                     'success': True,
                 })
@@ -368,7 +250,7 @@ class MatchingRoutes:
                 if to_user not in uname_list:
                     uname_list.append(to_user)
                     
-            # 获取用户信息 - 修改为获取实际存在的字段
+            # 获取用户信息
             user_profiles = db.execute_custom_sql(
                 "SELECT username, nickname, age, gender, height, weight, education, hobbies, bio FROM user_data WHERE username IN ({})".format(
                     ','.join(['?'] * len(uname_list))
@@ -423,61 +305,103 @@ class MatchingRoutes:
                     return jsonify({'error': 'itsusername is required'}), 400
                 
                 to_user = db.execute_custom_sql(
-                    "SELECT username FROM user_data WHERE nickname = ?",
+                    "SELECT username FROM user_data WHERE (nickname = ?)",
                     (itsusername,)
                 )
-                                
-                to_user = to_user[0]['username'] if to_user else None
-                print("---------------------"+to_user+"---------------------"+username )
+                
+                if to_user:
+                    to_user = to_user[0]['username']  
+                else:
+                    to_user = None
 
                 if not to_user:
                     return jsonify({'error': 'Invalid itsusername'}), 400
                 
-                existing_fhe = db.execute_custom_sql(
-                    "SELECT * FROM fhe_records WHERE (username1 = ? AND username2 = ?) OR (username1 = ? AND username2 = ?)",
-                    (username, to_user, to_user, username)
+                existing_push_record = db.execute_custom_sql(
+                    "SELECT * FROM push_records WHERE (from_user = ? AND to_user = ?)",
+                    (to_user,username)
                 )
                 
-                if existing_fhe:
-                    fhe_record = existing_fhe[0]
+                if existing_push_record:
+                    push_record = existing_push_record[0]
+                    # 检查对方是否已经响应
+                    if push_record['status'] != 'accepted':
+                        # 还未响应发送随机点
+                        fake_contact_info = generate_random_message_string()
+                        r = GenPrivateKey()
+                        R = multiply(G,r)
+                        rpk = GenPrivateKey()
+                        Rpk = multiply(G,rpk)
+                        enc_ = enc(Rpk,R)
+                        c1_x = enc_[0][0]
+                        c1_y = enc_[0][1]
+                        c2_x = enc_[1][0]
+                        c2_y = enc_[1][1]
+                        return jsonify({
+                            'success': True,
+                            'c1_x': str(c1_x),
+                            'c1_y': str(c1_y),
+                            'c2_x': str(c2_x),
+                            'c2_y': str(c2_y),
+                            'contact_info': str(fake_contact_info)
+                        })
                     
-                    # 检查双方是否都已经响应
-                    if fhe_record['visited_1'] == 1 and fhe_record['visited_2'] == 1:
-                        # 双方都已经响应，返回FHE计算结果
-                        username1 = fhe_record['username1']
-                        
-                        if username1 == username: # 当前用户是username1
-                            contact_key = [fhe_record['fhe_caculated_enc_key_2_c1'], fhe_record['fhe_caculated_enc_key_2_c2']]
-                            contact_info_str = fhe_record['encrypted_contact_info_2']
-                        else: # 当前用户是username2
-                            contact_key = [fhe_record['fhe_caculated_enc_key_1_c1'], fhe_record['fhe_caculated_enc_key_1_c2']]
-                            contact_info_str = fhe_record['encrypted_contact_info_1']
-                        
-                        fhe_result = [fhe_record['fhe_caculated_choice_c1'], fhe_record['fhe_caculated_choice_c2']]
-                        
-                        # 处理contact_info格式
-                        contact_info = contact_info_str
-                        if contact_info_str and contact_info_str != 'None':
-                            try:
-                                # 尝试解析为JSON
-                                import json
-                                contact_info = json.loads(contact_info_str)
-                            except:
-                                # 如果解析失败，保持原始字符串
-                                contact_info = contact_info_str
-                    
-                    else: 
-                        # 如果没有完整的匹配数据，返回随机数据
-                        contact_info = generate_random_message_string()
-                        fhe_result = [str(random.getrandbits(512)), str(random.getrandbits(512))]
-                        contact_key = [str(random.getrandbits(512)), str(random.getrandbits(512))]
-                    
-                    return jsonify({
-                        'success': True,
-                        'fhe_result': fhe_result,
-                        'contact_key': contact_key,
-                        'contact_info': contact_info
-                    })
+                    else:
+                    # 如果已响应，获取双方的fhe_records记录
+                        fhe_records_current_user = db.execute_custom_sql(
+                            "SELECT * FROM fhe_records WHERE (from_user = ? AND to_user = ? )",
+                            (username, to_user)
+                        )
+                        fhe_records_to_user = db.execute_custom_sql(
+                            "SELECT * FROM fhe_records WHERE (from_user = ? AND to_user = ? )",
+                            (to_user, username)
+                        )
+                        if not fhe_records_current_user or not fhe_records_to_user:
+                            return jsonify({'error': '内部错误'}), 404
+                        else:
+                            fhe_records_current_user = fhe_records_current_user[0]
+                            fhe_records_to_user = fhe_records_to_user[0]
+                            
+                            my_encchoice_c1_x = fhe_records_current_user['encrypt_choice_C1_x']
+                            my_encchoice_c1_y = fhe_records_current_user['encrypt_choice_C1_y']
+                            my_encchoice_c2_x = fhe_records_current_user['encrypt_choice_C2_x']
+                            my_encchoice_c2_y = fhe_records_current_user['encrypt_choice_C2_y']
+                            my_encchoice_c1 = (int(my_encchoice_c1_x),int(my_encchoice_c1_y))
+                            my_encchoice_c2 = (int(my_encchoice_c2_x),int(my_encchoice_c2_y))
+                            
+                            its_encchoice_c1_x = fhe_records_to_user['encrypt_choice_C1_x']
+                            its_encchoice_c1_y = fhe_records_to_user['encrypt_choice_C1_y']
+                            its_encchoice_c2_x = fhe_records_to_user['encrypt_choice_C2_x']
+                            its_encchoice_c2_y = fhe_records_to_user['encrypt_choice_C2_y']
+                            its_encchoice_c1 = (int(its_encchoice_c1_x),int(its_encchoice_c1_y))
+                            its_encchoice_c2 = (int(its_encchoice_c2_x),int(its_encchoice_c2_y))
+                            
+                            its_encmessage_c1_x = fhe_records_to_user['encrypt_message_C1_x']
+                            its_encmessage_c1_y = fhe_records_to_user['encrypt_message_C1_y']
+                            its_encmessage_c2_x = fhe_records_to_user['ecrypt_message_C2_x']
+                            its_encmessage_c2_y = fhe_records_to_user['encrypt_message_C2_y']
+                            its_encmessage_c1 = (int(its_encmessage_c1_x),int(its_encmessage_c1_y))
+                            its_encmessage_c2 = (int(its_encmessage_c2_x),int(its_encmessage_c2_y))
+                            
+                            r = GenPrivateKey()
+                            res = he_add((my_encchoice_c1,my_encchoice_c2),(its_encchoice_c1,its_encchoice_c2))
+                            res = [multiply(res[0],r),multiply(res[1],r)]
+                            res = he_add(res,(its_encmessage_c1,its_encmessage_c2))
+                            
+                            c1_x = res[0][0]
+                            c1_y = res[0][1]
+                            c2_x = res[1][0]
+                            c2_y = res[1][1]
+                            its_enc_contact_info = str(fhe_records_to_user['encrypted_contact'])
+                            
+                            return jsonify({
+                                'success': True,
+                                'c1_x': str(c1_x),
+                                'c1_y': str(c1_y),
+                                'c2_x': str(c2_x),
+                                'c2_y': str(c2_y),
+                                'contact_info': its_enc_contact_info
+                            })
                 else:
                     return jsonify({'error': '没有找到匹配的FHE记录'}), 404
                 

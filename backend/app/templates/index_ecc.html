@@ -115,7 +115,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="contact_info">联系方式</label>
+                            <label for="contact_info">联系方式 *</label>
                             <input type="text" id="contact_info" name="contact_info" placeholder="QQ、微信等">
                         </div>
 
@@ -216,7 +216,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/secureElgamal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/CryptoJS/rollups/aes.js') }}"></script>
     <script src="{{ url_for('static', filename='js/CryptoJS/components/mode-ecb.js') }}"></script>
     <script src="{{ url_for('static', filename='js/CryptoJS/components/pad-nopadding.js') }}"></script>
@@ -224,7 +223,6 @@
     <script src="{{ url_for('static', filename='js/aes.js') }}"></script>
 
     <script>
-        let secureElgamal = new SecureElGamal(512);
         let currentUser = null;
         let currentSession = null;
 
@@ -232,14 +230,14 @@
         document.addEventListener('DOMContentLoaded', async function () {
             try {
                 // 检查是否有有效的session
-                const session = secureElgamal.getCurrentSession();
+                const session = sm2.getCurrentSession();
                 if (!session.sessionId || !session.username) {
                     window.location.href = '/';
                     return;
                 }
 
                 // 验证session是否有效
-                const isValid = await secureElgamal.validateSession(session.sessionId);
+                const isValid = await sm2.validateSession(session.sessionId);
                 if (!isValid) {
                     alert('登录已过期，请重新登录');
                     window.location.href = '/';
@@ -264,7 +262,7 @@
         });
 
         // 显示不同的部分
-        function showSection(sectionName) {
+        function showSection(sectionName,fheUsername=null) {
             // 隐藏所有部分
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
@@ -281,12 +279,16 @@
             // 激活对应的菜单项
             event.target.classList.add('active');
 
+            if (sectionName == "matches") {
+                loadSectionContent(sectionName,fheUsername);
+            }
+
             // 加载对应的内容
             loadSectionContent(sectionName);
         }
 
         // 加载部分内容
-        async function loadSectionContent(sectionName) {
+        async function loadSectionContent(sectionName,fheUsername=null) {
             switch (sectionName) {
                 case 'dashboard':
                     await loadDashboard();
@@ -301,7 +303,7 @@
                     await loadPushes();
                     break;
                 case 'matches':
-                    await loadMatches();
+                    await loadMatches(fheUsername);
                     break;
                 case 'histories':
                     await loadHistory();
@@ -632,7 +634,7 @@
         }
 
         // 加载匹配列表
-        async function loadMatches() {
+        async function loadMatches(fheUsername) {
             const contentEl = document.getElementById('matchesContent');
 
             contentEl.innerHTML = `
@@ -641,7 +643,7 @@
                     <div class="fhe-controls">
                         <div class="form-group">
                             <label for="fheUsername">对方用户名:</label>
-                            <input type="text" id="fheUsername" placeholder="输入对方的用户名">
+                            <input type="text" id="fheUsername" placeholder="输入对方的用户名" value="${fheUsername || ''}">
                         </div>
                         <button class="btn btn-primary" onclick="handleFheMatchQuery()">查询匹配结果</button>
                     </div>
@@ -674,7 +676,7 @@
             `;
 
             try {
-                // 1. 获取原始加密数据
+                // 1. 获取加密数据
                 const result = await get_fhe_match_res(username);
 
                 console.log('查询用户:', username);
@@ -689,28 +691,56 @@
                     return;
                 }
 
-                // 2. 初始化FHE并解密数据
-                const fhe = new FHE(currentUser);
-                fhe.load_params();
-
-                // 计算共享密钥（需要对方的公钥）
-                const user_y = localStorage.getItem(`${username}_y`);
-                if (!user_y) {
+                // 2. 解密fhe数据
+                sharedKey = localStorage.getItem(`${currentUser}_${username}_shared_key`);
+                if (!sharedKey) {
                     resultContainer.innerHTML = `
                         <div class="alert alert-error">
-                            ❌ 缺少与用户 ${username} 的密钥交换信息，请先与该用户进行匹配操作
+                            ❌ 缺少与用户 ${username} 的密钥交换信息
                         </div>
                     `;
                     return;
                 }
 
-                await fhe.compute_shared_secret(user_y);
+                c1 = [BigInt(result.c1_x), BigInt(result.c1_y)];
+                c2 = [BigInt(result.c2_x), BigInt(result.c2_y)];
+                const res = await sm2.dec(sharedKey, c1, c2);
+                console.log('解密后的点', res);
+                
+                // 3. 解密联系方式
+                let contact_info = result.contact_info;
+                console.log('加密的联系方式:', contact_info);
+                dec_symetric_key = res[0];
 
-                // 3. 解密FHE结果
-                const decryptedResult = await fhe.processFheMatchResponse(result);
+                // aes 解密
+                res_contact_info = aes_dec_ecb(contact_info, BigInt(dec_symetric_key))
+                console.log('解密后的联系方式:', res_contact_info);
 
-                // 4. 显示解密后的结果
-                displayDecryptedResult(resultContainer, username, decryptedResult);
+                if (res_contact_info == false) {
+                    resultContainer.innerHTML = `
+                        <div class="alert alert-error">
+                            ❌ 无法解密联系方式，可能对方未提供或加密数据有误
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 0-7是否为 sucess_
+                if (res_contact_info.slice(0,7) == "sucess_") {
+                    res_contact_info = res_contact_info.slice(7);
+                    // 显示结果
+                    displayDecryptedResult(resultContainer, username, {
+                        isMatch: true,
+                        contactInfo: res_contact_info,
+                    });
+                        
+                } else {
+                    res_contact_info = null;
+                    displayDecryptedResult(resultContainer, username, {
+                        isMatch: false,
+                        contactInfo: null,
+                    });
+                }
 
             } catch (error) {
                 console.error('查询结果失败:', error);
@@ -724,7 +754,7 @@
 
         // 显示解密后的结果
         function displayDecryptedResult(container, username, decryptedResult) {
-            const { isMatch, decryptedValue, contactInfo, rawResult } = decryptedResult;
+            const { isMatch, contactInfo} = decryptedResult;
 
             let resultHtml = `
                 <div class="fhe-result-success">
@@ -735,7 +765,6 @@
                             <p class="match-status">
                                 ${isMatch ? '🎉 匹配成功！' : '💔 对方尚未进行匹配选择，或至少有一方选择了拒绝'}
                             </p>
-                            <p class="decrypt-value">解密值: ${decryptedValue}</p>
                         </div>
             `;
 
@@ -755,17 +784,6 @@
                         </div>
                 `;
             }
-
-            // 显示原始数据（调试用）
-            resultHtml += `
-                        <details class="raw-data">
-                            <summary>🔍 查看原始加密数据</summary>
-                            <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px;">${JSON.stringify(rawResult, null, 2)}</pre>
-                        </details>
-                    </div>
-                </div>
-            `;
-
             container.innerHTML = resultHtml;
         }
 
@@ -893,7 +911,7 @@
                 }
 
                 prepared.push_id = pushId;
-                console.log('准备发送的响应信息:', prepared);
+                // console.log('准备发送的响应信息:', prepared);
 
                 const apiResponse = await fetch('/api/respond_push_ecc', {
                     method: 'POST',
@@ -922,7 +940,7 @@
             if (!confirm('确定要登出吗？')) return;
 
             try {
-                await secureElgamal.logout();
+                await sm2.logout();
                 alert('登出成功！');
                 window.location.href = '/';
             } catch (error) {
@@ -989,8 +1007,6 @@
         
                 historyData.forEach(item => {
                     const userInfo = item.user_info || {};
-                    // const statusText = item.status === 'accepted' ? '已处理' : '未处理';
-                    const statusClass = item.status === 'accepted' ? 'status-accepted' : 'status-pending';
         
                     historyHtml += `
                         <div class="history-item">
@@ -1046,21 +1062,10 @@
             }
         }
 
-        // 从历史记录直接查询FHE匹配结果
+        // 查询FHE匹配结果
         async function handleFheMatchQueryFromHistory(username) {
-            // 先设置用户名到输入框
-            const usernameInput = document.getElementById('fheUsername');
-            if (usernameInput) {
-                usernameInput.value = username;
-            }
-
             // 切换到匹配页面
-            showSection('matches');
-
-            // 等待页面切换完成后执行查询
-            setTimeout(() => {
-                handleFheMatchQuery();
-            }, 100);
+            showSection('matches', username);
         }
 
         // 格式化日期显示
@@ -1127,15 +1132,14 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    console.log('获取结果:', data);
-                    return data; // 返回完整的响应数据
+                    return data; 
                 } else {
                     console.error('获取结果失败:', data.error);
                     return null;
                 }
             } catch (error) {
                 console.error('获取结果失败:', error);
-                throw error; // 抛出错误以便上层处理
+                throw error; 
             }
         }
 

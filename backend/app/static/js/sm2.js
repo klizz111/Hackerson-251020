@@ -1,13 +1,25 @@
 // 椭圆曲线参数
 
-const P = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF');
-const N = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123');
-const A = BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC');
-const B = BigInt('0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93');
-const Gx = BigInt('0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7');
-const Gy = BigInt('0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0');
+const P = BigInt(
+    "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF"
+);
+const N = BigInt(
+    "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123"
+);
+const A = BigInt(
+    "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC"
+);
+const B = BigInt(
+    "0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93"
+);
+const Gx = BigInt(
+    "0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7"
+);
+const Gy = BigInt(
+    "0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0"
+);
 const G = [Gx, Gy];
-const O = [0n, 0n]; 
+const O = [0n, 0n];
 const INFINITY = [0n, 1n, 0n];
 
 function isInfinityAffine(p) {
@@ -32,14 +44,18 @@ function bytesToBigInt(bytes) {
 function inv(a, n) {
     a = mod(a, n);
     if (a === 0n) return 0n;
-    let lm = 1n, hm = 0n;
-    let low = a, high = n;
+    let lm = 1n,
+        hm = 0n;
+    let low = a,
+        high = n;
     while (low > 1n) {
         const r = high / low;
         const nm = hm - lm * r;
         const newv = high - low * r;
-        hm = lm; high = low;
-        lm = nm; low = newv;
+        hm = lm;
+        high = low;
+        lm = nm;
+        low = newv;
     }
     return mod(lm, n);
 }
@@ -66,11 +82,10 @@ function fromJacobian(p) {
 // 雅可比点加倍
 function jacobianDouble(p) {
     const [X1, Y1, Z1] = p;
-    if (Z1 === 0n || Y1 === 0n) 
-        return INFINITY.slice();
+    if (Z1 === 0n || Y1 === 0n) return INFINITY.slice();
     const Y1sq = mod(Y1 * Y1, P);
     const S = mod(4n * X1 * Y1sq, P);
-    const M = mod(3n * X1 * X1 + A * (Z1 ** 4n), P);
+    const M = mod(3n * X1 * X1 + A * Z1 ** 4n, P);
     const nx = mod(M * M - 2n * S, P);
     const ny = mod(M * (S - nx) - 8n * (Y1sq * Y1sq), P);
     const nz = mod(2n * Y1 * Z1, P);
@@ -83,17 +98,15 @@ function jacobianAdd(p, q) {
     if (q[2] === 0n) return p.slice();
     const [X1, Y1, Z1] = p;
     const [X2, Y2, Z2] = q;
-    if (Y1 === 0n) return q.slice();
-    if (Y2 === 0n) return p.slice();
 
-    const U1 = mod(X1 * (Z2 ** 2n), P);
-    const U2 = mod(X2 * (Z1 ** 2n), P);
-    const S1 = mod(Y1 * (Z2 ** 3n), P);
-    const S2 = mod(Y2 * (Z1 ** 3n), P);
+    const U1 = mod(X1 * Z2 ** 2n, P);
+    const U2 = mod(X2 * Z1 ** 2n, P);
+    const S1 = mod(Y1 * Z2 ** 3n, P);
+    const S2 = mod(Y2 * Z1 ** 3n, P);
 
     if (U1 === U2) {
         if (S1 !== S2) {
-            return [0n, 0n, 1n]; // 无穷点
+            return INFINITY.slice(); 
         }
         return jacobianDouble(p);
     }
@@ -114,7 +127,7 @@ function jacobianAdd(p, q) {
 // 雅可比点按整数乘（使用平方-加算法）
 function jacobianMultiply(a, n) {
     let e = mod(BigInt(n), N);
-    if (a[1] === 0n || e === 0n) return INFINITY.slice();
+    if (e === 0n) return INFINITY.slice(); 
     let result = INFINITY.slice();
     let addend = a.slice();
     while (e > 0n) {
@@ -145,50 +158,46 @@ function genPrivateKey() {
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     return bytesToBigInt(array) % N;
-} 
+}
 
 // BigIntToBytes
 function bigIntToBytes(num, length) {
     const bytes = new Uint8Array(length);
     for (let i = length - 1; i >= 0; i--) {
-        bytes[i] = Number(num & 0xFFn);
+        bytes[i] = Number(num & 0xffn);
         num >>= 8n;
     }
     return bytes;
 }
 
-
 function generateSeed() {
     // 生成32字节随机数据，转换为Base64格式（更短但仍然安全）
-    const array = new Uint8Array(32);  // 32字节 = 256位
+    const array = new Uint8Array(32); // 32字节 = 256位
     crypto.getRandomValues(array);
     // 使用Base64编码，去掉填充字符，更紧凑
-    return btoa(String.fromCharCode(...array)).replace(/[+/=]/g, '').substring(0, 32);
+    return btoa(String.fromCharCode(...array))
+        .replace(/[+/=]/g, "")
+        .substring(0, 32);
 }
 
 function generateReadableSeed() {
     const seed = this.generateSeed();
     // 每8个字符添加一个分隔符
-    return seed.match(/.{1,8}/g).join('-');
+    return seed.match(/.{1,8}/g).join("-");
 }
 
 // 使用种子派生256位私钥
 async function derivePrivateKey(seed) {
     const encoder = new TextEncoder();
     const data = encoder.encode(seed);
-    
-    let hashBuffer = await crypto.subtle.digest('SHA-256', data);  
-    
+    let hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = new Uint8Array(hashBuffer);
-    
-    // 将哈希转换为大整数
     let x = 0n;
     for (let i = 0; i < hashArray.length; i++) {
         x = (x << 8n) + BigInt(hashArray[i]);
     }
-    
-    // 确保私钥在正确范围内 [1, P]
-    return (x % (P - 1n)) + 1n;
+    // [1, N-1]
+    return (x % (N - 1n)) + 1n;
 }
 
 async function register(username, seed) {
@@ -211,7 +220,7 @@ async function register(username, seed) {
         data.set(bigIntToBytes(parts[i], 32), i * 32);
     }
 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = new Uint8Array(hashBuffer);
     let c = 0n;
     for (let i = 0; i < hashArray.length; i++) {
@@ -229,12 +238,12 @@ async function register(username, seed) {
         pk_y: P[1].toString(),
         c: c.toString(),
         z: z.toString(),
-    }
+    };
 
-    const response = await fetch('/api/register_ecc', {
-        method: 'POST',
+    const response = await fetch("/api/register_ecc", {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
         },
         body: JSON.stringify(postdata),
     });
@@ -258,7 +267,7 @@ async function login(username, seed) {
         data.set(bigIntToBytes(parts[i], 32), i * 32);
     }
 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = new Uint8Array(hashBuffer);
     let c = 0n;
     for (let i = 0; i < hashArray.length; i++) {
@@ -271,15 +280,15 @@ async function login(username, seed) {
         username: username,
         c: c.toString(),
         z: z.toString(),
-    }
+    };
 
-    const response = await fetch('/api/login_ecc', {
-        method: 'POST',
+    const response = await fetch("/api/login_ecc", {
+        method: "POST",
         headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
         },
         body: JSON.stringify(postdata),
-    }); 
+    });
 
     const result = await response.json();
 
@@ -291,28 +300,30 @@ async function login(username, seed) {
     }
 }
 
-function  saveSessionToLocal(username, sessionId) {
-        try {
-            const sessionData = {
-                username: username,
-                sessionId: sessionId,
-                timestamp: Date.now()
-            };
-            localStorage.setItem(`zk_session_${username}`, JSON.stringify(sessionData));
-            localStorage.setItem('zk_current_session', sessionId);
-            localStorage.setItem('zk_current_user', username);
-        } catch (error) {
-            console.warn('无法保存session到本地存储:', error);
-        }
+function saveSessionToLocal(username, sessionId) {
+    try {
+        const sessionData = {
+            username: username,
+            sessionId: sessionId,
+            timestamp: Date.now(),
+        };
+        localStorage.setItem(
+            `zk_session_${username}`,
+            JSON.stringify(sessionData)
+        );
+        localStorage.setItem("zk_current_session", sessionId);
+        localStorage.setItem("zk_current_user", username);
+    } catch (error) {
+        console.warn("无法保存session到本地存储:", error);
     }
-
+}
 
 async function GenPK(username) {
     const seed = localStorage.getItem(`${username}_seed`);
     if (!seed) {
-        throw new Error('用户种子不存在');
+        throw new Error("用户种子不存在");
     }
-    return derivePrivateKey(seed).then(d => multiply(G, d));
+    return derivePrivateKey(seed).then((d) => multiply(G, d));
 }
 
 async function enc(pk, m) {
@@ -345,7 +356,7 @@ function negate(p) {
 async function gen_shared_key(currentUser, other_username) {
     const seed = localStorage.getItem(`zk_login_seed_${currentUser}`);
     if (!seed) {
-        throw new Error('用户种子不存在');
+        throw new Error("用户种子不存在");
     }
 
     const user_x = localStorage.getItem(`${other_username}_x`);
@@ -362,35 +373,45 @@ async function gen_shared_key(currentUser, other_username) {
 }
 
 // 加密联系方式与选择
-async function prepare_response_info(contact_info,currentUser, other_username, response) {
+async function prepare_response_info(
+    contact_info,
+    currentUser,
+    other_username,
+    response
+) {
     // 1. 生成联系方式加密密钥m
-    const contact_key_int = genPrivateKey() 
-    localStorage.setItem(`contact_key_${currentUser}_to_${other_username}`, contact_key_int.toString());
-    
+    const contact_key_int = genPrivateKey();
+
     // 2. 生成点M
     const M = multiply(G, contact_key_int);
-    const symmetric_key = M[0]
-    console.log('M:', M);
+    const symmetric_key = M[0];
+    localStorage.setItem(
+        `contact_key_${currentUser}_to_${other_username}`,
+        symmetric_key.toString()
+    );
+    console.log("M:", M);
 
     // 3. AES加密
     const encryptedHex = aes_enc_ecb(contact_info, symmetric_key);
-    
+
     // 转换为Uint8Array
-    encrypted_contact = new Uint8Array(
-        encryptedHex.match(/.{2}/g).map(byte => parseInt(byte, 16))
+    const encrypted_contact = new Uint8Array(
+        encryptedHex.match(/.{2}/g).map((byte) => parseInt(byte, 16))
     );
-    
+
     // 3. 加密contact_key_int
-    const gen_shared_key = localStorage.getItem(`${currentUser}_${other_username}_shared_key`);
-    if (!gen_shared_key) {
-        throw new Error('共享密钥不存在');
+    const user_shared_key = localStorage.getItem(
+        `${currentUser}_${other_username}_shared_key`
+    );
+    if (!user_shared_key) {
+        throw new Error("共享密钥不存在");
     }
 
-    const pk = multiply(G, BigInt(gen_shared_key));
-    const encrypt_message_temp = await enc(pk, M);
+    const pk = multiply(G, BigInt(user_shared_key));
+    const encrypt_message = await enc(pk, M);
 
     // 4. 加密选择
-    const choice = response === 'accept' ? 1n : 0n; 
+    const choice = response === "accept" ? 1n : 0n;
 
     let choice_point;
     if (choice === 1n) {
@@ -399,33 +420,142 @@ async function prepare_response_info(contact_info,currentUser, other_username, r
         choice_point = multiply(G, genPrivateKey()); // 如果拒绝加密随机点
     }
     const encrypt_choice = await enc(pk, choice_point);
-    
-    // 5. 点加
-    const C1_final = add(encrypt_message_temp.C1,encrypt_choice.C1); 
-    const C2_final = add(encrypt_message_temp.C2, encrypt_choice.C2);
 
-    response_data = {
-        C1_x: C1_final[0].toString(),
-        C1_y: C1_final[1].toString(),
-        C2_x: C2_final[0].toString(),
-        C2_y: C2_final[1].toString(),
-        encrypted_contact: Array.from(encrypted_contact).map(b => b.toString(16).padStart(2, '0')).join('')
-    }
+    const response_data = {
+        encrypt_message_C1_x: encrypt_message.C1[0].toString(),
+        encrypt_message_C1_y: encrypt_message.C1[1].toString(),
+        encrypt_message_C2_x: encrypt_message.C2[0].toString(),
+        encrypt_message_C2_y: encrypt_message.C2[1].toString(),
+        encrypt_choice_C1_x: encrypt_choice.C1[0].toString(),
+        encrypt_choice_C1_y: encrypt_choice.C1[1].toString(),
+        encrypt_choice_C2_x: encrypt_choice.C2[0].toString(),
+        encrypt_choice_C2_y: encrypt_choice.C2[1].toString(),
+        encrypted_contact: Array.from(encrypted_contact)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(""),
+    };
 
     // 尝试解密
-    var dec_res = await dec(BigInt(gen_shared_key), C1_final, C2_final);
-    console.log('尝试解密结果:', dec_res);
-    if (dec_res[0] === M[0])
-        console.log('解密成功，点匹配');
-    else
-        console.log('解密失败，点不匹配');
+    var dec_res = await dec(
+        BigInt(user_shared_key),
+        add(encrypt_message.C1, encrypt_choice.C1),
+        add(encrypt_message.C2, encrypt_choice.C2)
+    );
+    console.log("尝试解密结果:", dec_res);
+    if (dec_res[0] === M[0]) console.log("解密成功，点匹配");
+    else console.log("解密失败，点不匹配");
+    
+        // ===== 自测：双方都同意（Choice=O） =====
+    if (choice === 1n) {
+        try {
+            // 模拟“对方也选择 O”的密文
+            const enc_choice_peer = await enc(pk, O);
 
+            // 情况一：平台不乘 r，只做 Enc(M) + Enc(O) + Enc(O)
+            const sumC1_no_r = add(add(encrypt_message.C1, encrypt_choice.C1), enc_choice_peer.C1);
+            const sumC2_no_r = add(add(encrypt_message.C2, encrypt_choice.C2), enc_choice_peer.C2);
+            const dec_no_r = await dec(BigInt(user_shared_key), sumC1_no_r, sumC2_no_r);
+            const ok_no_r = dec_no_r[0] === M[0] && dec_no_r[1] === M[1];
+            console.log("[自测][双方同意][no-r] =>", ok_no_r ? "PASS" : "FAIL", { dec: dec_no_r, M });
+
+            // 情况二：平台按 r 做 r*(Enc(O)+Enc(O)) + Enc(M)
+            let r_test = 0n;
+            do { r_test = genPrivateKey(); } while (r_test === 0n); // 确保 r ≠ 0
+            const choiceSumC1 = add(encrypt_choice.C1, enc_choice_peer.C1);
+            const choiceSumC2 = add(encrypt_choice.C2, enc_choice_peer.C2);
+            const rC1 = multiply(choiceSumC1, r_test);
+            const rC2 = multiply(choiceSumC2, r_test);
+            const sumC1_with_r = add(encrypt_message.C1, rC1);
+            const sumC2_with_r = add(encrypt_message.C2, rC2);
+            const dec_with_r = await dec(BigInt(user_shared_key), sumC1_with_r, sumC2_with_r);
+            const ok_with_r = dec_with_r[0] === M[0] && dec_with_r[1] === M[1];
+            console.log("[自测][双方同意][with-r] =>", ok_with_r ? "PASS" : "FAIL", { dec: dec_with_r, M });
+        } catch (e) {
+            console.warn("[自测][双方同意] 异常:", e);
+        }
+    }
+    
     return response_data;
+}
+
+function getCurrentSession() {
+    try {
+        const sessionId = localStorage.getItem("zk_current_session");
+        const username = localStorage.getItem("zk_current_user");
+        return { sessionId, username };
+    } catch (error) {
+        return { sessionId: null, username: null };
+    }
+}
+
+async function validateSession(sessionId = null) {
+    try {
+        const useSessionId =
+            sessionId ||
+            this.currentSessionId ||
+            localStorage.getItem("zk_current_session");
+        if (!useSessionId) return false;
+
+        const response = await fetch("/api/validate_session", {
+            method: "GET",
+            headers: {
+                Authorization: `Bearer ${useSessionId}`,
+            },
+        });
+
+        if (!response.ok) return false;
+
+        const data = await response.json();
+        return data.valid;
+    } catch (error) {
+        console.warn("验证session失败:", error);
+        return false;
+    }
+}
+
+// 用户登出
+async function logout() {
+    try {
+        const sessionId =
+            this.currentSessionId || localStorage.getItem("zk_current_session");
+        if (!sessionId) {
+            throw new Error("未找到有效的session");
+        }
+
+        const response = await fetch("/api/logout", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${sessionId}`,
+            },
+            body: JSON.stringify({}),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || "登出失败");
+        }
+
+        // 清除本地存储的session信息
+        this.clearSessionFromLocal();
+
+        return await response.json();
+    } catch (error) {
+        // 即使服务器端登出失败，也清除本地session
+        this.clearSessionFromLocal();
+        throw new Error(`登出失败: ${error.message}`);
+    }
 }
 
 // 导出到全局对象
 window.sm2 = {
-    P, N, A, B, Gx, Gy, G,
+    P,
+    N,
+    A,
+    B,
+    Gx,
+    Gy,
+    G,
     bytesToBigInt,
     mod,
     inv,
@@ -449,5 +579,7 @@ window.sm2 = {
     gen_shared_key,
     prepare_response_info,
     GenPK,
+    getCurrentSession,
+    validateSession,
+    logout,
 };
-

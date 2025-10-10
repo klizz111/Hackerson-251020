@@ -98,72 +98,23 @@ class DatabaseManager:
                                 UNIQUE(from_user, to_user, push_date)"""
                 )
                 
-                # 系统统计表
-                self.create_table("system_stats",
-                                """id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                stat_name TEXT NOT NULL UNIQUE,
-                                stat_value TEXT NOT NULL,
-                                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"""
-                )
-                
-                # fhe相关
-                # fhe_records 存储用户交互记录
+                # fhe      
                 self.create_table("fhe_records",
                                   """id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                     match_id INTEGER NOT NULL, 
-                                     username1 TEXT NOT NULL, 
-                                     username2 TEXT NOT NULL, 
-                                     visited_1 INTEGER DEFAULT 0, 
-                                     visited_2 INTEGER DEFAULT 0, 
-                                     bond_pub_key TEXT NOT NULL, 
-                                     encrypted_contact_info_1 TEXT, 
-                                     encrypted_contact_info_2 TEXT, 
-                                     encrypted_enc_key_1_c1 TEXT, 
-                                     encrypted_enc_key_1_c2 TEXT,
-                                     encrypted_enc_key_2_c1 TEXT, 
-                                     encrypted_enc_key_2_c2 TEXT,
-                                     encrypted_choice_1_c1 TEXT, 
-                                     encrypted_choice_1_c2 TEXT, 
-                                     encrypted_choice_2_c1 TEXT, 
-                                     encrypted_choice_2_c2 TEXT,
-                                     fhe_caculated_choice_c1 TEXT,
-                                     fhe_caculated_choice_c2 TEXT,
-                                     fhe_caculated_enc_key_1_c1 TEXT,
-                                     fhe_caculated_enc_key_1_c2 TEXT,
-                                     fhe_caculated_enc_key_2_c1 TEXT,
-                                     fhe_caculated_enc_key_2_c2 TEXT,
-                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                                     FOREIGN KEY (match_id) REFERENCES push_records(id),
-                                     FOREIGN KEY (username1) REFERENCES user_data(username),
-                                     FOREIGN KEY (username2) REFERENCES user_data(username)
-                                  """)
-                
-                self.create_table("phe_records",
-                                  """
-                                  id INTEGER PRIMARY KEY AUTOINCREMENT,
                                   match_id INTEGER NOT NULL,
-                                  """
+                                  from_user TEXT NOT NULL,
+                                  to_user TEXT NOT NULL,
+                                  encrypt_message_C1_x TEXT NOT NULL,
+                                  encrypt_message_C1_y TEXT NOT NULL,
+                                  ecrypt_message_C2_x TEXT NOT NULL,
+                                  encrypt_message_C2_y TEXT NOT NULL, 
+                                  encrypt_choice_C1_x TEXT NOT NULL,
+                                  encrypt_choice_C1_y TEXT NOT NULL,
+                                  encrypt_choice_C2_x TEXT NOT NULL,
+                                  encrypt_choice_C2_y TEXT NOT NULL,
+                                  encrypted_contact TEXT NOT NULL"""
                                   )
                 
-                
-                # account_data中添加root用户，将root的p,g,q,y设置为系统全局的群参数
-                elgamal = ElGamal(bits=512)
-                elgamal.keygen()
-                root_data = {
-                    'username': 'root',
-                    'p': str(elgamal.p),
-                    'g': str(elgamal.g),
-                    'q': str(elgamal.q),
-                    'y': str(elgamal.y),
-                    'compressed_credential': '',
-                    'bits': 512
-                }
-                
-                # 检查root用户是否已存在
-                existing_root = self.select('account_data', 'username = ?', ('root',))
-                if not existing_root:
-                    self.insert("account_data", root_data)
                 
                 self.isInitialized = True
                 self.disconnect()

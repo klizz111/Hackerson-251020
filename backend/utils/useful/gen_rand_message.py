@@ -32,3 +32,15 @@ def generate_random_message_string(length=16, min_value=0, max_value=255):
     message = generate_random_message(length, min_value, max_value)
     return str(message)
 
+def generate_random_hex_string(length=32):
+    if length <= 0:
+        return ""
+    # 需要的字节数（每字节2个 hex 字符），为保证前导零，使用指定宽度格式化
+    nbytes = (length + 1) // 2
+    val = random.getrandbits(nbytes * 8)
+    hexstr = f"{val:0{nbytes*2}x}"
+    return hexstr[:length]
+
+if __name__ == "__main__":
+    print(generate_random_hex_string())
+

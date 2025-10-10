@@ -76,5 +76,15 @@ function aes_dec_ecb(ciphertext, contact_key_int) {
     );
     
     // 返回解密后的明文字符串
-    return decrypted.toString(CryptoJS.enc.Utf8);
+    try {
+        const final_res = decrypted.toString(CryptoJS.enc.Utf8);
+        if (!final_res) {
+            console.error("解密失败，无法转换为UTF-8字符串");
+            return false;
+        }
+        return final_res;
+    } catch (error) {
+        console.error("解密过程中发生错误:", error);
+        return false;
+    }
 }
