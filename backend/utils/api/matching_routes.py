@@ -327,10 +327,10 @@ class MatchingRoutes:
                     # 检查对方是否已经响应
                     if push_record['status'] != 'accepted':
                         # 还未响应发送随机点
-                        fake_contact_info = generate_random_message_string()
-                        r = GenPrivateKey()
+                        fake_contact_info = generate_random_hex_string(username,to_user)
+                        r = GenFakePrivateKey(username,to_user)
                         R = multiply(G,r)
-                        rpk = GenPrivateKey()
+                        rpk = GenFakePrivateKey(to_user,username)
                         Rpk = multiply(G,rpk)
                         enc_ = enc(Rpk,R)
                         c1_x = enc_[0][0]

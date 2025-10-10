@@ -29,21 +29,6 @@
                     <li><a href="#" onclick="showSection('matches')">💕 我的匹配</a></li>
                     <li><a href="#" onclick="showSection('histories')">📙 匹配历史</a></li>
                 </ul>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3 id="todayPushes">-</h3>
-                        <p>今日推送</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3 id="pendingPushes">-</h3>
-                        <p>待处理</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3 id="totalMatches">-</h3>
-                        <p>总匹配</p>
-                    </div>
-                </div>
             </div>
 
             <div class="content-area">
@@ -261,9 +246,8 @@
             }
         });
 
-        // 显示不同的部分
-        function showSection(sectionName,fheUsername=null) {
-            // 隐藏所有部分
+        function showSection(sectionName, fheUsername = null) {
+            // 隐藏
             document.querySelectorAll('.section').forEach(section => {
                 section.classList.remove('active');
             });
@@ -276,18 +260,17 @@
             // 显示选中的部分
             document.getElementById(sectionName).classList.add('active');
 
-            // 激活对应的菜单项
-            event.target.classList.add('active');
+            // 高亮侧边栏对应菜单项
+            const navLink = document.querySelector(`.nav-menu a[onclick*="showSection('${sectionName}'"]`);
+            if (navLink) navLink.classList.add('active');
 
-            if (sectionName == "matches") {
-                loadSectionContent(sectionName,fheUsername);
+            if (sectionName === 'matches') {
+                loadSectionContent(sectionName, fheUsername);
+            } else {
+                loadSectionContent(sectionName);
             }
-
-            // 加载对应的内容
-            loadSectionContent(sectionName);
         }
 
-        // 加载部分内容
         async function loadSectionContent(sectionName,fheUsername=null) {
             switch (sectionName) {
                 case 'dashboard':
@@ -706,7 +689,7 @@
                 c2 = [BigInt(result.c2_x), BigInt(result.c2_y)];
                 const res = await sm2.dec(sharedKey, c1, c2);
                 console.log('解密后的点', res);
-                
+
                 // 3. 解密联系方式
                 let contact_info = result.contact_info;
                 console.log('加密的联系方式:', contact_info);
@@ -719,7 +702,7 @@
                 if (res_contact_info == false) {
                     resultContainer.innerHTML = `
                         <div class="alert alert-error">
-                            ❌ 无法解密联系方式，可能对方未提供或加密数据有误
+                            ❌ 无法解密联系方式，对方尚未做出选择或至少有一方选择了拒绝
                         </div>
                     `;
                     return;
@@ -1039,7 +1022,7 @@
                                 
                                 <div class="history-actions">
                                     ${item.status === 'accepted' ? `
-                                        <button class="btn btn-primary btn-small" onclick="handleFheMatchQueryFromHistory('${userInfo.username}')">
+                                        <button class="btn btn-primary btn-small" onclick="showSection('matches','${userInfo.username}')">
                                             🔍 查看匹配结果
                                         </button>
                                     ` : ''}
@@ -1060,12 +1043,6 @@
                     </div>
                 `;
             }
-        }
-
-        // 查询FHE匹配结果
-        async function handleFheMatchQueryFromHistory(username) {
-            // 切换到匹配页面
-            showSection('matches', username);
         }
 
         // 格式化日期显示
