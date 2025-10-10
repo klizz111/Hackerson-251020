@@ -27,6 +27,13 @@ Gx = 0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7
 Gy = 0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0
 G = cast("PlainPoint2D", (Gx, Gy))
 
+def x_2_point(x: int) -> PlainPoint2D:
+    """根据x坐标计算y坐标，返回曲线上的点(x,y)"""
+    y2 = (pow(x, 3, P) + A * x % P + B) % P
+    y = pow(y2, (P + 1) // 4, P)
+    if (y * y) % P != y2:
+        raise ValueError("x is not a valid x coordinate on the curve")
+    return (x, y)
 
 def bytes_to_int(x: bytes) -> int:
     o = 0

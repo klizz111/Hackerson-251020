@@ -1,5 +1,5 @@
-[backend](./backend/) 后端组件
-[frontend](./frontend/) 前端
-[docs](./docs/) 文档
+## Usage 
 
-| [后端说明](./docs/backend.md) |
+1. > cd ./backend
+2. > pipenv install -r requirements.txt
+3. > pipenv run python ./main.py

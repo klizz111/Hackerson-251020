@@ -1,4 +1,6 @@
 **/packages
-/.vscode
-*.txt
+**/.vscode
 **/__pycache__
+**/.venv
+**/node_modules
+**/**.db

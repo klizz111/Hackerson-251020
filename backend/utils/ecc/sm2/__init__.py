@@ -10,4 +10,5 @@ from .sm2 import (
     inv,
     PlainPoint2D,
     PlainPoint3D,
+    x_2_point
 )

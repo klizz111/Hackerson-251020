@@ -1,10 +1,18 @@
 from ..ecc.sm2 import *
 import random
 from typing import Tuple
+import hashlib
 
 def GenPrivateKey() -> int:
     """生成私钥 d"""
     d = random.randint(1, N-2)
+    return d
+
+def GenFakePrivateKey(username1, username2) -> int:
+    """基于用户名生成稳定的随机私钥 d"""
+    key = f"{username1}::{username2}"
+    h = hashlib.sha256(key.encode("utf-8")).hexdigest()
+    d = int(h, 16) % (N - 2) + 1
     return d
 
 def GenPubKey(d: int) -> PlainPoint2D:
@@ -14,8 +22,8 @@ def GenPubKey(d: int) -> PlainPoint2D:
 
 def enc(pk: PlainPoint2D, m: PlainPoint2D) -> Tuple[PlainPoint2D, PlainPoint2D]:
     """加密 c = (C1, C2)
-        C1 = k*G
-        C2 = m + k*pk
+        C1 = r*G
+        C2 = m + r*pk = m + r*d*G
     """
     k = random.randint(1, N-2)
     C1 = multiply(G, k)
