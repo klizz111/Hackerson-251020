@@ -201,6 +201,7 @@ async function derivePrivateKey(seed) {
 }
 
 async function register(username, seed) {
+    // console.time('registrationTime');
     // 1. 生成用户私钥
     const d = await derivePrivateKey(seed);
 
@@ -231,7 +232,7 @@ async function register(username, seed) {
 
     // 6. 计算 z = (r + c * d) mod N
     const z = mod(r + c * d, N);
-
+    // console.timeEnd('registrationTime');
     const postdata = {
         username: username,
         pk_x: P[0].toString(),
@@ -252,6 +253,7 @@ async function register(username, seed) {
 }
 
 async function login(username, seed) {
+    // console.time('loginTime');
     // 1. 生成用户私钥
     const d = await derivePrivateKey(seed);
     // 2. 计算用户公钥
@@ -281,6 +283,7 @@ async function login(username, seed) {
         c: c.toString(),
         z: z.toString(),
     };
+    // console.timeEnd('loginTime');
 
     const response = await fetch("/api/login_ecc", {
         method: "POST",
@@ -391,8 +394,10 @@ async function prepare_response_info(
     );
     console.log("M:", M);
 
-    // 3. AES加密
+    // 3. sm4 加密
+    // console.time("sm4EncryptionTime");
     const encryptedHex = sm4_enc_ecb(contact_info, symmetric_key);
+    // console.timeEnd("sm4EncryptionTime");
 
     // 转换为Uint8Array
     const encrypted_contact = new Uint8Array(

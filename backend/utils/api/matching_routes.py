@@ -1,13 +1,13 @@
 from flask import request, jsonify, g
 from ..matching import MatchingService, ProfileService
 from ..database.dataBase import DatabaseManager
-import datetime
 import logging
 import random
 from ..useful.gen_rand_message import generate_random_message_string,generate_random_hex_string
 from ..ecc_elgamal import *
 from ..ecc.sm2 import *
 import json 
+import time
 
 class MatchingRoutes:
     """匹配系统相关的路由处理类"""
@@ -292,6 +292,7 @@ class MatchingRoutes:
         @self.require_session
         def get_fhe_match_res():
             """获取fhe匹配结果"""
+            current_time = time.time()
             username = g.current_user
             data = request.get_json()
 
@@ -393,6 +394,8 @@ class MatchingRoutes:
                             c2_y = res[1][1]
                             its_enc_contact_info = str(fhe_records_to_user['encrypted_contact'])
                             
+                            end_time = time.time()  
+                            # print(f"FHE Match result generation time: {end_time - current_time} seconds")
                             return jsonify({
                                 'success': True,
                                 'c1_x': str(c1_x),

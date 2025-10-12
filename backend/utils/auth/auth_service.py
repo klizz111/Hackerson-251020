@@ -3,6 +3,7 @@ from typing import Optional, Dict, Any
 from ..database.dataBase import DatabaseManager
 from ..zk.schnorr import dlogProofVerify
 from ..zk.schnorr_ecc import dlog_proof_verify_ecc
+import time
 
 class AuthService:
     """认证服务类，处理用户注册和登录逻辑"""
@@ -209,7 +210,10 @@ class AuthService:
             Y = (Y_x, Y_y)
             proof = (proof_c,proof_z)
             
+            current_time = time.time()
             is_valid = dlog_proof_verify_ecc(Y, proof)
+            end_time = time.time()
+            # print(f"ECC Login proof verification time: {end_time - current_time} seconds")
                 
             if is_valid:
                 # 登录成功，生成session ID

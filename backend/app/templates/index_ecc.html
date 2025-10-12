@@ -674,6 +674,7 @@
                     return;
                 }
 
+                // console.time('fheDecryptionTime');
                 // 2. 解密fhe数据
                 sharedKey = localStorage.getItem(`${currentUser}_${username}_shared_key`);
                 if (!sharedKey) {
@@ -688,6 +689,7 @@
                 c1 = [BigInt(result.c1_x), BigInt(result.c1_y)];
                 c2 = [BigInt(result.c2_x), BigInt(result.c2_y)];
                 const res = await sm2.dec(sharedKey, c1, c2);
+                 //console.timeEnd('fheDecryptionTime');
                 console.log('解密后的点', res);
 
                 // 3. 解密联系方式
@@ -695,8 +697,10 @@
                 console.log('加密的联系方式:', contact_info);
                 dec_symetric_key = res[0];
 
-                // aes 解密
+                // sm4 解密
+                //console.time('sm4DecryptionTime');
                 res_contact_info = sm4_dec_ecb(contact_info, BigInt(dec_symetric_key))
+                //console.timeEnd('sm4DecryptionTime');
                 console.log('解密后的联系方式:', res_contact_info);
 
                 if (res_contact_info == false) {
@@ -870,6 +874,7 @@
         async function respondToPush(pushId, username, response) {
             try {
                 console.log('响应推送:', pushId, username, response);
+                //console.time('respondToPush');
                 username = String(username);
 
                 // fhe
@@ -892,6 +897,7 @@
                     alert('❌ 响应失败: ' + error.message);
                     return;
                 }
+                //console.timeEnd('respondToPush');
 
                 prepared.push_id = pushId;
                 // console.log('准备发送的响应信息:', prepared);
