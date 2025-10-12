@@ -392,7 +392,7 @@ async function prepare_response_info(
     console.log("M:", M);
 
     // 3. AES加密
-    const encryptedHex = aes_enc_ecb(contact_info, symmetric_key);
+    const encryptedHex = sm4_enc_ecb(contact_info, symmetric_key);
 
     // 转换为Uint8Array
     const encrypted_contact = new Uint8Array(
@@ -435,7 +435,7 @@ async function prepare_response_info(
             .join(""),
     };
 
-    // 尝试解密
+/*     // 尝试解密
     var dec_res = await dec(
         BigInt(user_shared_key),
         add(encrypt_message.C1, encrypt_choice.C1),
@@ -443,9 +443,9 @@ async function prepare_response_info(
     );
     console.log("尝试解密结果:", dec_res);
     if (dec_res[0] === M[0]) console.log("解密成功，点匹配");
-    else console.log("解密失败，点不匹配");
+    else console.log("解密失败，点不匹配"); */
     
-        // ===== 自测：双方都同意（Choice=O） =====
+/*         // ===== 自测：双方都同意（Choice=O） =====
     if (choice === 1n) {
         try {
             // 模拟“对方也选择 O”的密文
@@ -473,78 +473,9 @@ async function prepare_response_info(
         } catch (e) {
             console.warn("[自测][双方同意] 异常:", e);
         }
-    }
+    } */
     
     return response_data;
-}
-
-function getCurrentSession() {
-    try {
-        const sessionId = localStorage.getItem("zk_current_session");
-        const username = localStorage.getItem("zk_current_user");
-        return { sessionId, username };
-    } catch (error) {
-        return { sessionId: null, username: null };
-    }
-}
-
-async function validateSession(sessionId = null) {
-    try {
-        const useSessionId =
-            sessionId ||
-            this.currentSessionId ||
-            localStorage.getItem("zk_current_session");
-        if (!useSessionId) return false;
-
-        const response = await fetch("/api/validate_session", {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${useSessionId}`,
-            },
-        });
-
-        if (!response.ok) return false;
-
-        const data = await response.json();
-        return data.valid;
-    } catch (error) {
-        console.warn("验证session失败:", error);
-        return false;
-    }
-}
-
-// 用户登出
-async function logout() {
-    try {
-        const sessionId =
-            this.currentSessionId || localStorage.getItem("zk_current_session");
-        if (!sessionId) {
-            throw new Error("未找到有效的session");
-        }
-
-        const response = await fetch("/api/logout", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${sessionId}`,
-            },
-            body: JSON.stringify({}),
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || "登出失败");
-        }
-
-        // 清除本地存储的session信息
-        this.clearSessionFromLocal();
-
-        return await response.json();
-    } catch (error) {
-        // 即使服务器端登出失败，也清除本地session
-        this.clearSessionFromLocal();
-        throw new Error(`登出失败: ${error.message}`);
-    }
 }
 
 // 导出到全局对象
@@ -579,7 +510,4 @@ window.sm2 = {
     gen_shared_key,
     prepare_response_info,
     GenPK,
-    getCurrentSession,
-    validateSession,
-    logout,
 };

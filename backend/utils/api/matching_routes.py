@@ -3,7 +3,6 @@ from ..matching import MatchingService, ProfileService
 from ..database.dataBase import DatabaseManager
 import datetime
 import logging
-from ..fhe.fhe import *
 import random
 from ..useful.gen_rand_message import generate_random_message_string,generate_random_hex_string
 from ..ecc_elgamal import *

@@ -201,11 +201,11 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/CryptoJS/rollups/aes.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/CryptoJS/components/mode-ecb.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/CryptoJS/components/pad-nopadding.js') }}"></script>
+
     <script src="{{ url_for('static', filename='js/sm2.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/aes.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tools.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sm4_ecb.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sm4.js') }}"></script>
 
     <script>
         let currentUser = null;
@@ -215,14 +215,14 @@
         document.addEventListener('DOMContentLoaded', async function () {
             try {
                 // 检查是否有有效的session
-                const session = sm2.getCurrentSession();
+                const session = getCurrentSession();
                 if (!session.sessionId || !session.username) {
                     window.location.href = '/';
                     return;
                 }
 
                 // 验证session是否有效
-                const isValid = await sm2.validateSession(session.sessionId);
+                const isValid = await validateSession(session.sessionId);
                 if (!isValid) {
                     alert('登录已过期，请重新登录');
                     window.location.href = '/';
@@ -696,7 +696,7 @@
                 dec_symetric_key = res[0];
 
                 // aes 解密
-                res_contact_info = aes_dec_ecb(contact_info, BigInt(dec_symetric_key))
+                res_contact_info = sm4_dec_ecb(contact_info, BigInt(dec_symetric_key))
                 console.log('解密后的联系方式:', res_contact_info);
 
                 if (res_contact_info == false) {
@@ -923,7 +923,7 @@
             if (!confirm('确定要登出吗？')) return;
 
             try {
-                await sm2.logout();
+                await tools.logout();
                 alert('登出成功！');
                 window.location.href = '/';
             } catch (error) {

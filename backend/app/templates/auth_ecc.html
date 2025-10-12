@@ -59,10 +59,9 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/secureElgamal.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sm2.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tools.js') }}"></script>
     <script>
-        let secureElgamal = new SecureElGamal(256);
         // 切换标签页
         function switchTab(tabName) {
             // 隐藏所有标签内容
@@ -198,7 +197,7 @@
             contentDiv.innerHTML = '<div class="loading">正在获取用户信息...</div>';
             
             try {
-                const userInfo = await secureElgamal.getUserInfo();
+                const userInfo = await getUserInfo();
                 contentDiv.innerHTML = `
                     <div class="success">
                         <h4>用户信息</h4>
@@ -263,7 +262,7 @@
             }
             
             try {
-                const result = await secureElgamal.updateProfile(profileData);
+                const result = await updateProfile(profileData);
                 document.getElementById('userContent').innerHTML = `
                     <div class="success">✅ ${result.message}</div>
                 `;
@@ -280,7 +279,7 @@
             contentDiv.innerHTML = '<div class="loading">正在验证Session...</div>';
             
             try {
-                const isValid = await secureElgamal.validateSession();
+                const isValid = await validateSession();
                 if (isValid) {
                     contentDiv.innerHTML = '<div class="success">✅ Session有效，认证状态正常</div>';
                 } else {
@@ -297,7 +296,7 @@
             if (!confirm('确定要登出吗？')) return;
             
             try {
-                await secureElgamal.logout();
+                await logout();
                 alert('登出成功！');
                 location.reload();
             } catch (error) {
@@ -360,10 +359,10 @@
             console.log('登录系统已加载');
             
             // 检查是否有当前session
-            const currentSession = secureElgamal.getCurrentSession();
+            const currentSession = getCurrentSession();
             if (currentSession.sessionId && currentSession.username) {
                 // 验证session是否仍然有效
-                const isValid = await secureElgamal.validateSession(currentSession.sessionId);
+                const isValid = await validateSession(currentSession.sessionId);
                 if (isValid) {
                     // 如果session有效，直接显示用户控制面板
                     showUserDashboard({
@@ -373,7 +372,7 @@
                     });
                 } else {
                     // 如果session无效，清除本地存储
-                    secureElgamal.clearSessionFromLocal();
+                    clearSessionFromLocal();
                 }
             }
         });
