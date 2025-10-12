@@ -6,4 +6,4 @@
 **/**.db
 **/Pipfile
 GmSSL**
-*.sh
+install_gmssl.sh
