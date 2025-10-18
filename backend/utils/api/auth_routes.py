@@ -2,7 +2,6 @@ from flask import request, jsonify, g
 from functools import wraps
 from ..auth import AuthService, SessionManager
 from ..database.dataBase import DatabaseManager
-from ..zk.schnorr import dlogProofVerify
 
 class AuthRoutes:
     """认证相关的路由处理类"""

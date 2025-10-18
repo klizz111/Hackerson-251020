@@ -1,7 +1,6 @@
 import logging
 from typing import Optional, Dict, Any
 from ..database.dataBase import DatabaseManager
-from ..zk.schnorr import dlogProofVerify
 from ..zk.schnorr_ecc import dlog_proof_verify_ecc
 import time
 
