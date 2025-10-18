@@ -187,9 +187,10 @@ function generateReadableSeed() {
 }
 
 // 使用种子派生256位私钥
-async function derivePrivateKey(seed) {
+async function derivePrivateKey(seed, username) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(seed);
+    // 将 seed 和 username 拼接后编码
+    const data = encoder.encode(seed + username);
     let hashBuffer = await crypto.subtle.digest("SHA-256", data);
     const hashArray = new Uint8Array(hashBuffer);
     let x = 0n;
@@ -203,7 +204,7 @@ async function derivePrivateKey(seed) {
 async function register(username, seed) {
     // console.time('registrationTime');
     // 1. 生成用户私钥
-    const d = await derivePrivateKey(seed);
+    const d = await derivePrivateKey(seed,username);
 
     // 2. 计算用户公钥
     const P = multiply(G, d);
@@ -255,7 +256,7 @@ async function register(username, seed) {
 async function login(username, seed) {
     // console.time('loginTime');
     // 1. 生成用户私钥
-    const d = await derivePrivateKey(seed);
+    const d = await derivePrivateKey(seed,username);
     // 2. 计算用户公钥
     const P = multiply(G, d);
     // 3. 生成随机数 r
@@ -326,7 +327,7 @@ async function GenPK(username) {
     if (!seed) {
         throw new Error("用户种子不存在");
     }
-    return derivePrivateKey(seed).then((d) => multiply(G, d));
+    return derivePrivateKey(seed,username).then((d) => multiply(G, d));
 }
 
 async function enc(pk, m) {
@@ -365,7 +366,7 @@ async function gen_shared_key(currentUser, other_username) {
     const user_x = localStorage.getItem(`${other_username}_x`);
     const user_y = localStorage.getItem(`${other_username}_y`);
 
-    const d = await derivePrivateKey(seed);
+    const d = await derivePrivateKey(seed,currentUser);
     // 计算共享密钥
     // 计算 S = d * pk_other
     const other_pk = [BigInt(user_x), BigInt(user_y)];

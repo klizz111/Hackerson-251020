@@ -131,7 +131,7 @@ install_openssl() {
 	fi
 }
 
-# 在当前路径下安装证书（生成自签名证书）
+# 生成自签证书
 generate_certs() {
 	dest_dir="$(pwd)/certs"
 	mkdir -p "$dest_dir"
