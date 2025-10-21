@@ -142,6 +142,7 @@ class MatchingRoutes:
             encrypt_choice_C2_x = data.get('encrypt_choice_C2_x')
             encrypt_choice_C2_y = data.get('encrypt_choice_C2_y')
             encrypted_contact = data.get('encrypted_contact')
+            iv = data.get('iv')
             
             if not push_id:
                 return jsonify({'error': 'Invalid push_id'}), 400
@@ -186,7 +187,8 @@ class MatchingRoutes:
                     'encrypt_choice_C1_y': encrypt_choice_C1_y,
                     'encrypt_choice_C2_x': encrypt_choice_C2_x,
                     'encrypt_choice_C2_y': encrypt_choice_C2_y,
-                    'encrypted_contact': encrypted_contact
+                    'encrypted_contact': encrypted_contact,
+                    'iv': iv
                 })
                 
                 return jsonify({
@@ -328,6 +330,7 @@ class MatchingRoutes:
                     if push_record['status'] != 'accepted':
                         # 还未响应发送随机点
                         fake_contact_info = generate_random_hex_string(username,to_user)
+                        fake_iv = generate_random_hex_string(username,to_user)
                         r = GenFakePrivateKey(username,to_user)
                         R = multiply(G,r)
                         rpk = GenFakePrivateKey(to_user,username)
@@ -343,7 +346,8 @@ class MatchingRoutes:
                             'c1_y': str(c1_y),
                             'c2_x': str(c2_x),
                             'c2_y': str(c2_y),
-                            'contact_info': str(fake_contact_info)
+                            'contact_info': str(fake_contact_info),
+                            'iv': str(fake_iv)
                         })
                     
                     else:
@@ -393,6 +397,7 @@ class MatchingRoutes:
                             c2_x = res[1][0]
                             c2_y = res[1][1]
                             its_enc_contact_info = str(fhe_records_to_user['encrypted_contact'])
+                            its_iv = str(fhe_records_to_user['iv'])
                             
                             end_time = time.time()  
                             # print(f"FHE Match result generation time: {end_time - current_time} seconds")
@@ -402,7 +407,8 @@ class MatchingRoutes:
                                 'c1_y': str(c1_y),
                                 'c2_x': str(c2_x),
                                 'c2_y': str(c2_y),
-                                'contact_info': its_enc_contact_info
+                                'contact_info': its_enc_contact_info,
+                                'iv': its_iv
                             })
                 else:
                     return jsonify({'error': '没有找到匹配的FHE记录'}), 404

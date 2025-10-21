@@ -133,6 +133,66 @@ function clearSessionFromLocal() {
     }
 }
 
+const __SM4_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-=,.";
+
+/**
+ * 生成 16 字符的随机 IV
+ */
+function gen_iv() {
+    const len = 16;
+    const chars = __SM4_CHARSET;
+    let out = "";
+
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+        const buf = new Uint8Array(len);
+        crypto.getRandomValues(buf);
+        for (let i = 0; i < len; i++) {
+            out += chars[buf[i] % chars.length];
+        }
+    } else {
+        // 降级方案（非加密安全）
+        for (let i = 0; i < len; i++) {
+            const r = Math.floor(Math.random() * chars.length);
+            out += chars[r];
+        }
+    }
+    return out;
+}
+
+/**
+ * @param {bigint} seed
+ * @returns {string} 长度为 16 的 key
+ */
+function gen_symkey(seed) {
+    if (typeof seed !== "bigint") {
+        throw new TypeError("gen_symkey 需要一个 BigInt 作为入参");
+    }
+
+    const MASK64 = 0xFFFFFFFFFFFFFFFFn;
+    const chars = __SM4_CHARSET;
+
+    // SplitMix64
+    function next64(state) {
+        state = (state + 0x9E3779B97F4A7C15n) & MASK64;
+        let z = state;
+        z = (z ^ (z >> 30n)) * 0xBF58476D1CE4E5B9n & MASK64;
+        z = (z ^ (z >> 27n)) * 0x94D049BB133111EBn & MASK64;
+        z ^= (z >> 31n);
+        return [state, z & MASK64];
+    }
+
+    let state = (seed & MASK64);
+    let out = "";
+    for (let i = 0; i < 16; i++) {
+        [state, rnd] = next64(state);
+        const idx = Number(rnd % BigInt(chars.length)); 
+        out += chars[idx];
+    }
+    return out;
+}
+
+window.gen_iv = gen_iv;
+window.gen_symkey = gen_symkey;
 window.getUserInfo = getUserInfo;
 window.updateProfile = updateProfile;
 window.validateSession = validateSession;

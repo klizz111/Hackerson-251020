@@ -206,6 +206,7 @@
     <script src="{{ url_for('static', filename='js/tools.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sm4_ecb.js') }}"></script>
     <script src="{{ url_for('static', filename='js/sm4.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sm41.js') }}"></script>
 
     <script>
         let currentUser = null;
@@ -699,7 +700,10 @@
 
                 // sm4 解密
                 //console.time('sm4DecryptionTime');
-                res_contact_info = sm4_dec_ecb(contact_info, BigInt(dec_symetric_key))
+                const sym_key = gen_symkey(BigInt(dec_symetric_key));
+                const iv = result.iv;
+                let sm4 = new SM4Util();
+                res_contact_info = sm4.decryptCustom_CBC(contact_info, iv, sym_key);
                 //console.timeEnd('sm4DecryptionTime');
                 console.log('解密后的联系方式:', res_contact_info);
 

@@ -397,13 +397,22 @@ async function prepare_response_info(
 
     // 3. sm4 加密
     // console.time("sm4EncryptionTime");
-    const encryptedHex = sm4_enc_ecb(contact_info, symmetric_key);
-    // console.timeEnd("sm4EncryptionTime");
-
-    // 转换为Uint8Array
-    const encrypted_contact = new Uint8Array(
-        encryptedHex.match(/.{2}/g).map((byte) => parseInt(byte, 16))
+    const iv = gen_iv();
+    const key = gen_symkey(symmetric_key);
+    let sm4 = new SM4Util();
+    const encryptedHex = sm4.encryptCustom_CBC(
+        contact_info,
+        iv,
+        key
     );
+    // 尝试解密
+/*     const test_decrypt = sm4.decryptCustom_CBC(
+        encryptedHex,
+        iv,
+        key
+    ); */
+    // console.log("尝试解密联系方式:", test_decrypt);
+    // console.timeEnd("sm4EncryptionTime");
 
     // 3. 加密contact_key_int
     const user_shared_key = localStorage.getItem(
@@ -436,9 +445,8 @@ async function prepare_response_info(
         encrypt_choice_C1_y: encrypt_choice.C1[1].toString(),
         encrypt_choice_C2_x: encrypt_choice.C2[0].toString(),
         encrypt_choice_C2_y: encrypt_choice.C2[1].toString(),
-        encrypted_contact: Array.from(encrypted_contact)
-            .map((b) => b.toString(16).padStart(2, "0"))
-            .join(""),
+        encrypted_contact: encryptedHex,
+        iv: iv,
     };
 
 /*     // 尝试解密

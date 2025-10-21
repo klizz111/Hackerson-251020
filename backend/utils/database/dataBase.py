@@ -111,7 +111,8 @@ class DatabaseManager:
                                   encrypt_choice_C1_y TEXT NOT NULL,
                                   encrypt_choice_C2_x TEXT NOT NULL,
                                   encrypt_choice_C2_y TEXT NOT NULL,
-                                  encrypted_contact TEXT NOT NULL"""
+                                  encrypted_contact TEXT NOT NULL,
+                                  iv TEXT NOT NULL"""
                                   )
                 
                 
