@@ -9,4 +9,6 @@ GmSSL**
 install_gmssl.sh
 *.png
 流程.md
-/tmp
+/tmp**
+tmp**
+*.zip
