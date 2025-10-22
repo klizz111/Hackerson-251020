@@ -3,7 +3,7 @@ from ..matching import MatchingService, ProfileService
 from ..database.dataBase import DatabaseManager
 import logging
 import random
-from ..useful.gen_rand_message import generate_random_message_string,generate_random_hex_string
+from ..useful.gen_rand_message import generate_random_message_string,generate_random_hex_string,gen_symkey
 from ..ecc_elgamal import *
 from ..ecc.sm2 import *
 import json 
@@ -128,7 +128,7 @@ class MatchingRoutes:
         @self.app.route('/api/respond_push_ecc', methods=['POST'])
         @self.require_session
         def respond_to_push():
-            """响应推送（接受/拒绝）"""
+            """响应推送"""
             username = g.current_user
             data = request.get_json()
             
@@ -329,8 +329,8 @@ class MatchingRoutes:
                     # 检查对方是否已经响应
                     if push_record['status'] != 'accepted':
                         # 还未响应发送随机点
-                        fake_contact_info = generate_random_hex_string(username,to_user)
-                        fake_iv = generate_random_hex_string(username,to_user)
+                        fake_contact_info = gen_symkey(username,to_user,1919810)
+                        fake_iv = gen_symkey(username,to_user,8101919)
                         r = GenFakePrivateKey(username,to_user)
                         R = multiply(G,r)
                         rpk = GenFakePrivateKey(to_user,username)
