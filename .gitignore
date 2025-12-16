@@ -12,3 +12,4 @@ install_gmssl.sh
 /tmp**
 tmp**
 *.zip
+/docs

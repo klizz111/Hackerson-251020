@@ -219,10 +219,35 @@ class AuthRoutes:
             
             db = self._get_db_manager()
             auth_service = AuthService(db)
-            res = auth_service.verify_login_proof_ecc(username, proof_c, proof_z)
+            res = auth_service.verify_login_proof_ecc_inj(username, proof_c, proof_z)
             
             if res['success']:
                 return jsonify(res)
             else:
                 status_code = 401 if 'Invalid proof' in res['error'] or 'not found' in res['error'] else 500
                 return jsonify(res), status_code
+            
+        @self.app.route('/api/login_ecc_inject', methods=['POST'])
+        def login_ecc_inj():
+            """ECC登录"""
+            data = request.get_json()
+            username = data.get('username')
+                        
+            if not username:
+                return jsonify({'error': 'Username is required'}), 400
+            
+            try:
+                proof_c = int(data.get('c'))
+                proof_z = int(data.get('z'))
+            except (TypeError, ValueError):
+                return jsonify({'error': 'Invalid proof format'}), 400
+            
+            db = self._get_db_manager()
+            auth_service = AuthService(db)
+            res = auth_service.verify_login_proof_ecc_inj(username, proof_c, proof_z)
+            
+            if res['success']:
+                return jsonify(res)
+            else:
+                status_code = 401 if 'Invalid proof' in res['error'] or 'not found' in res['error'] else 500
+                return jsonify(res), status_code    

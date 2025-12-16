@@ -224,7 +224,52 @@ class AuthService:
                     'session_id': session_id,
                     'username': username
                 }
+            else:
+                return {'success': False, 'error': 'Invalid proof'}
             
         except Exception as e:
             logging.error(f"{e}")
             return {'sucess': False, 'message': str(e)}
+        
+    def verify_login_proof_ecc_inj(self, username: str, proof_c: int, proof_z: int) -> Dict[str, Any]:
+        try:
+            # 获取用户信息
+            # [VULNERABILITY] 修改为直接拼接字符串，引入 SQL 注入漏洞
+            # 攻击者可以构造 username 为: ' UNION SELECT 'admin', 'attacker_pk_x', 'attacker_pk_y' -- 
+            # 从而让查询返回包含攻击者公钥但用户名为 admin 的记录
+            sql_where = f"username = '{username}'"
+            user_record = self.db.select('account_data_ecc', sql_where)
+
+            if not user_record:
+                return {'success': False, 'error': 'User not found'}
+            
+            user_data = user_record[0]
+            Y_x = int(user_data['pk_x'])
+            Y_y = int(user_data['pk_y'])
+            Y = (Y_x, Y_y)
+            proof = (proof_c,proof_z)
+            
+            current_time = time.time()
+            is_valid = dlog_proof_verify_ecc(Y, proof)
+            end_time = time.time()
+            # print(f"ECC Login proof verification time: {end_time - current_time} seconds")
+                
+            if is_valid:
+                # 登录成功，生成session ID
+                # [VULNERABILITY] 修改为使用数据库返回的 username 生成 session
+                # 如果通过 SQL 注入篡改了返回记录中的 username，这里就会为该用户生成 session
+                target_username = user_data['username']
+                session_id = self.db.generate_session_id(target_username)
+                
+                return {
+                    'success': True,
+                    'message': 'Login successful',
+                    'session_id': session_id,
+                    'username': target_username
+                }
+            else:
+                return {'success': False, 'error': 'Invalid proof'}
+            
+        except Exception as e:
+            logging.error(f"{e}")
+            return {'success': False, 'message': str(e)}
